@@ -152,6 +152,10 @@ function showLevelUpToast(text) {
 
 // ---------- 입력 ----------
 window.addEventListener("keydown", (e) => {
+  const isMove =
+    e.key === "ArrowLeft" || e.key === "a" || e.key === "A" ||
+    e.key === "ArrowRight" || e.key === "d" || e.key === "D";
+  if (isMove && player) player.targetX = null; // 키보드가 터치 목표를 넘겨받음
   if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.left = true;
   if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = true;
 });
@@ -175,9 +179,8 @@ canvas.addEventListener("touchmove", (e) => {
   player.targetX = pointerToTargetX(e.touches[0].clientX);
 }, { passive: true });
 
-canvas.addEventListener("touchend", () => {
-  if (player) player.targetX = null;
-});
+// 손을 떼도 목표 지점은 유지 — 톡 한 번 누르면 그 자리까지 걸어갑니다.
+// (키보드를 쓰면 keydown에서 목표를 지워 조작권을 넘깁니다)
 
 let mouseDown = false;
 canvas.addEventListener("mousedown", (e) => {
@@ -191,7 +194,6 @@ canvas.addEventListener("mousemove", (e) => {
 });
 window.addEventListener("mouseup", () => {
   mouseDown = false;
-  if (player) player.targetX = null;
 });
 
 // ---------- 똥 스폰 ----------
