@@ -66,12 +66,38 @@ function buildCharacterSelect() {
 buildCharacterSelect();
 
 // ---------- 캔버스 크기 ----------
+//
+// width/height 는 CSS 픽셀입니다. 캔버스 자체는 화면 배율(devicePixelRatio)만큼
+// 크게 잡고 그리기 좌표를 되돌려 놓습니다. 이걸 안 하면 고해상도 화면에서
+// 캔버스가 늘어나 그림이 뿌옇게 보입니다(원본 이미지는 500px 로 충분합니다).
 let width, height;
+let playHeight;    // 똥이 떨어지는 영역의 높이
+let controlHeight; // 아래쪽 조작용 검은 띠의 높이
+
 function resize() {
   width = window.innerWidth;
   height = window.innerHeight;
-  canvas.width = width;
-  canvas.height = height;
+
+  // 조작 띠: 화면의 20% 정도, 너무 얇거나 두껍지 않게
+  controlHeight = Math.max(110, Math.min(190, Math.round(height * 0.2)));
+  playHeight = height - controlHeight;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(height * dpr);
+  canvas.style.width = width + "px";
+  canvas.style.height = height + "px";
+
+  // 이후 그리기는 CSS 픽셀 좌표로 하되 실제로는 배율만큼 촘촘히 찍힙니다.
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  // 화면이 바뀌면 캐릭터를 새 바닥선 위로 올려둡니다.
+  if (player) {
+    player.y = playHeight - player.h - 10;
+    player.x = Math.max(0, Math.min(width - player.w, player.x));
+  }
 }
 window.addEventListener("resize", resize);
 resize();
@@ -109,7 +135,8 @@ function scheduleBigPoopIfNeeded() {
 function resetGame() {
   player = {
     x: width / 2 - PLAYER_SIZE / 2,
-    y: height - PLAYER_SIZE - 20,
+    // 조작용 검은 띠 바로 위에 섭니다.
+    y: playHeight - PLAYER_SIZE - 10,
     w: PLAYER_SIZE,
     h: PLAYER_SIZE,
     targetX: null,
@@ -169,31 +196,42 @@ function pointerToTargetX(clientX) {
   return clientX - rect.left;
 }
 
+// 손가락을 대고 "움직여야" 따라옵니다.
+// 톡 누르면 그 자리로 걸어가던 동작은 뺐습니다 — 피하려다 잘못 누르면
+// 캐릭터가 엉뚱한 곳으로 가버렸습니다.
+let touchStartX = null;
+
 canvas.addEventListener("touchstart", (e) => {
   if (!running) return;
-  player.targetX = pointerToTargetX(e.touches[0].clientX);
+  touchStartX = e.touches[0].clientX;
 }, { passive: true });
 
 canvas.addEventListener("touchmove", (e) => {
   if (!running) return;
-  player.targetX = pointerToTargetX(e.touches[0].clientX);
+  const x = e.touches[0].clientX;
+  // 살짝 흔들린 정도는 무시하고, 실제로 움직였을 때부터 따라갑니다.
+  if (touchStartX != null && Math.abs(x - touchStartX) < 4 && player.targetX == null) return;
+  player.targetX = pointerToTargetX(x);
 }, { passive: true });
 
-// 손을 떼도 목표 지점은 유지 — 톡 한 번 누르면 그 자리까지 걸어갑니다.
-// (키보드를 쓰면 keydown에서 목표를 지워 조작권을 넘깁니다)
+canvas.addEventListener("touchend", () => {
+  touchStartX = null;
+}, { passive: true });
 
 let mouseDown = false;
+let mouseStartX = null;
 canvas.addEventListener("mousedown", (e) => {
   mouseDown = true;
-  if (!running) return;
-  player.targetX = pointerToTargetX(e.clientX);
+  mouseStartX = e.clientX;
 });
 canvas.addEventListener("mousemove", (e) => {
   if (!running || !mouseDown) return;
+  if (mouseStartX != null && Math.abs(e.clientX - mouseStartX) < 4 && player.targetX == null) return;
   player.targetX = pointerToTargetX(e.clientX);
 });
 window.addEventListener("mouseup", () => {
   mouseDown = false;
+  mouseStartX = null;
 });
 
 // ---------- 똥 스폰 ----------
@@ -294,7 +332,8 @@ function update() {
       continue;
     }
 
-    if (poop.y > height) {
+    // 조작 띠에 닿으면 피한 것으로 봅니다(띠 안까지 떨어지지 않습니다).
+    if (poop.y > playHeight) {
       poops.splice(i, 1);
       score += poop.big ? 5 : 1;
       updateHud();
@@ -349,10 +388,38 @@ function drawPoop(poop) {
   ctx.restore();
 }
 
+/**
+ * 아래쪽 조작용 검은 띠.
+ *
+ * 손가락을 여기에 두고 움직이면 캐릭터를 가리지 않습니다.
+ * 캐릭터는 이 띠 바로 위에 서 있고, 똥도 띠에 닿으면 사라집니다.
+ */
+function drawControlBar() {
+  ctx.save();
+
+  ctx.fillStyle = "#0b0b0f";
+  ctx.fillRect(0, playHeight, width, controlHeight);
+
+  // 경계선 — 어디까지가 놀이 영역인지 눈에 보이게
+  ctx.fillStyle = "rgba(255,255,255,0.16)";
+  ctx.fillRect(0, playHeight, width, 2);
+
+  // 조작 안내: 좌우 화살표와 손잡이 모양
+  const cy = playHeight + controlHeight / 2;
+  ctx.fillStyle = "rgba(255,255,255,0.30)";
+  ctx.font = "600 15px 'Segoe UI', 'Malgun Gothic', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("◀   여기서 좌우로 움직이세요   ▶", width / 2, cy);
+
+  ctx.restore();
+}
+
 function draw() {
   ctx.clearRect(0, 0, width, height);
   poops.forEach(drawPoop);
   drawPlayer();
+  drawControlBar();
 }
 
 // ---------- 루프 ----------
