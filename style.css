@@ -102,7 +102,6 @@ html, body {
 
 #pause-screen.locked button {
   pointer-events: none;
-  opacity: 0.5;
 }
 
 .overlay p {
