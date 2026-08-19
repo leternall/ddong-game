@@ -1,0 +1,12 @@
+# Claude Code 원격 세션 로그 (세션/환경 ID 포함 - 공유 금지)
+remote-session.log
+
+# 작업용 임시 파일
+_*.py
+_*.js
+_*.png
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
