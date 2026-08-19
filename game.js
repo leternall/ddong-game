@@ -12,6 +12,7 @@ const selectScreen = document.getElementById("select-screen");
 const characterListEl = document.getElementById("character-list");
 
 const pauseScreen = document.getElementById("pause-screen");
+const pauseContinueBtn = document.getElementById("pauseContinueBtn");
 const pauseRestartBtn = document.getElementById("pauseRestartBtn");
 const pauseSelectBtn = document.getElementById("pauseSelectBtn");
 
@@ -581,6 +582,10 @@ restartBtn.addEventListener("click", () => {
   selectScreen.classList.remove("hidden");
 });
 
+pauseContinueBtn.addEventListener("click", () => {
+  togglePause();
+});
+
 pauseRestartBtn.addEventListener("click", () => {
   startGame(); // 같은 캐릭터로 처음부터 다시 시작 (resetGame이 pauseScreen도 가려줍니다)
 });
@@ -592,9 +597,4 @@ pauseSelectBtn.addEventListener("click", () => {
   pauseScreen.classList.add("hidden");
   hud.classList.add("hidden");
   selectScreen.classList.remove("hidden");
-});
-
-// 버튼이 아니라 배경(오버레이 자체)을 누르면 다시 탭한 것으로 보고 이어합니다.
-pauseScreen.addEventListener("click", (e) => {
-  if (e.target === pauseScreen) togglePause();
 });
