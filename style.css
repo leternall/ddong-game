@@ -89,6 +89,17 @@ html, body {
   margin-bottom: 12px;
 }
 
+#gameoverHitImg {
+  width: 160px;
+  max-width: 45vw;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+#gameoverHitImg.hidden {
+  display: none;
+}
+
 .overlay p {
   font-size: 17px;
   margin-bottom: 8px;

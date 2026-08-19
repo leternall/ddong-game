@@ -12,6 +12,7 @@ const selectScreen = document.getElementById("select-screen");
 const characterListEl = document.getElementById("character-list");
 
 const gameoverScreen = document.getElementById("gameover-screen");
+const gameoverHitImg = document.getElementById("gameoverHitImg");
 const finalScoreEl = document.getElementById("finalScore");
 const rankMessageEl = document.getElementById("rankMessage");
 const rankingListEl = document.getElementById("rankingList");
@@ -23,8 +24,8 @@ const RANKING_KEY = "ddongpihagi-rankings";
 
 // ---------- 캐릭터 목록 ----------
 const CHARACTERS = [
-  { id: "girl", name: "소녀 캐릭터", src: "assets/character_girl.png" },
-  { id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png" },
+  { id: "girl", name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png" },
+  { id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png", hitSrc: "assets/character_magpie_hit.png" },
 ];
 
 function loadImage(src) {
@@ -513,6 +514,8 @@ function endGame() {
   running = false;
   cancelAnimationFrame(rafId);
   hud.classList.add("hidden");
+  gameoverHitImg.src = selectedCharacter.hitSrc;
+  gameoverHitImg.classList.remove("hidden");
   finalScoreEl.textContent = `점수: ${score} (도달 레벨: ${level})`;
   const rankInfo = saveScoreAndGetRank(score);
   renderRanking(rankInfo);
