@@ -330,7 +330,14 @@ function update(dt) {
     poop.y += poop.speed * dt;
     poop.rot += poop.rotSpeed * dt;
 
-    if (invincibleFrames <= 0 && isColliding(player, poop)) {
+    if (isColliding(player, poop)) {
+      if (invincibleFrames > 0) {
+        // 무적(깜빡이는) 중에는 목숨이 안 깎입니다. 대신 닿은 똥은 그 자리에서
+        // 사라지게 해서, 계속 겹쳐 있다가 무적이 풀리자마자 다시 맞는 것을
+        // 방지합니다.
+        poops.splice(i, 1);
+        continue;
+      }
       poops.splice(i, 1);
       lives--;
       invincibleFrames = HIT_INVINCIBLE_FRAMES;
