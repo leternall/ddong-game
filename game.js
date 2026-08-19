@@ -126,6 +126,9 @@ const BIG_POOP_LEVEL_INTERVAL = 5;
 // 캐릭터보다 이만큼(px) 더 위부터 화면을 누르면 일시정지로 취급합니다.
 // 캐릭터 바로 위/조작 띠 쪽은 그대로 이동 조작용으로 남겨둡니다.
 const PAUSE_ZONE_MARGIN = 30;
+// 일시정지 화면이 뜨자마자 그 터치의 "유령 클릭"으로 버튼이 바로 눌리는 걸
+// 막기 위해, 버튼이 눌리기 시작하는 데 걸리는 대기 시간(ms).
+const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 
 // ---------- 게임 상태 ----------
 // (변수 선언은 resize() 보다 위, 캔버스 크기 부분에 있습니다)
@@ -224,15 +227,26 @@ function isInPauseZone(clientY) {
   return pointerToCanvasY(clientY) < player.y - PAUSE_ZONE_MARGIN;
 }
 
+let pauseUnlockTimer = null;
+
 function togglePause() {
   if (!running) return;
   paused = !paused;
+  clearTimeout(pauseUnlockTimer);
   if (paused) {
     cancelAnimationFrame(rafId);
     keys.left = false;
     keys.right = false;
     pauseScreen.classList.remove("hidden");
+    // 일시정지를 켠 그 터치가 화면에 곧바로 나타난 버튼 위에서 "유령 클릭"을
+    // 만들어 바로 눌리는 걸 막기 위해, 잠깐 동안 버튼을 눌러도 반응하지
+    // 않게 잠가둡니다.
+    pauseScreen.classList.add("locked");
+    pauseUnlockTimer = setTimeout(() => {
+      pauseScreen.classList.remove("locked");
+    }, PAUSE_BUTTON_UNLOCK_DELAY);
   } else {
+    pauseScreen.classList.remove("locked");
     pauseScreen.classList.add("hidden");
     lastTimestamp = null;
     rafId = requestAnimationFrame(loop);

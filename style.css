@@ -100,6 +100,11 @@ html, body {
   display: none;
 }
 
+#pause-screen.locked button {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 .overlay p {
   font-size: 17px;
   margin-bottom: 8px;
