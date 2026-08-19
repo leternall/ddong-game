@@ -74,6 +74,13 @@ let width, height;
 let playHeight;    // 똥이 떨어지는 영역의 높이
 let controlHeight; // 아래쪽 조작용 검은 띠의 높이
 
+// 게임 상태 변수는 여기서 미리 선언합니다.
+// resize() 가 화면 크기에 맞춰 player 를 손보는데, 선언이 아래에 있으면
+// 최초 resize() 호출에서 "초기화 전 접근" 오류가 나 스크립트가 멈춥니다.
+let player, poops, score, level, lives, levelFrames, spawnTimer, spawnInterval;
+let bigPoopSpawnedThisWindow, bigPoopSpawnFrame;
+let invincibleFrames, running, keys;
+
 function resize() {
   width = window.innerWidth;
   height = window.innerHeight;
@@ -111,9 +118,7 @@ const HIT_INVINCIBLE_FRAMES = 75;
 const BIG_POOP_LEVEL_INTERVAL = 5;
 
 // ---------- 게임 상태 ----------
-let player, poops, score, level, lives, levelFrames, spawnTimer, spawnInterval;
-let bigPoopSpawnedThisWindow, bigPoopSpawnFrame;
-let invincibleFrames, running, keys;
+// (변수 선언은 resize() 보다 위, 캔버스 크기 부분에 있습니다)
 
 function currentSpawnInterval() {
   return Math.max(16, 70 - (level - 1) * 4);
