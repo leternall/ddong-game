@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="robots" content="noindex, nofollow">
 <title>똥피하기</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <div id="game-container">
@@ -26,6 +26,12 @@
       <p class="hint">← → 방향키 또는 아래쪽 검은 띠에서 손가락을 좌우로 밀어 이동 · 똥을 3번 맞으면 게임 종료</p>
     </div>
 
+    <div id="pause-screen" class="overlay hidden">
+      <h1>일시정지</h1>
+      <button id="pauseRestartBtn">재시작</button>
+      <button id="pauseSelectBtn">캐릭터 다시 선택</button>
+    </div>
+
     <div id="gameover-screen" class="overlay hidden">
       <img id="gameoverHitImg" class="hidden" alt="">
       <h1>게임 오버!</h1>
@@ -38,6 +44,6 @@
     <div id="levelup-toast" class="hidden"></div>
   </div>
 
-  <script src="game.js?v=3"></script>
+  <script src="game.js?v=4"></script>
 </body>
 </html>

@@ -11,6 +11,10 @@ const livesEl = document.getElementById("lives");
 const selectScreen = document.getElementById("select-screen");
 const characterListEl = document.getElementById("character-list");
 
+const pauseScreen = document.getElementById("pause-screen");
+const pauseRestartBtn = document.getElementById("pauseRestartBtn");
+const pauseSelectBtn = document.getElementById("pauseSelectBtn");
+
 const gameoverScreen = document.getElementById("gameover-screen");
 const gameoverHitImg = document.getElementById("gameoverHitImg");
 const finalScoreEl = document.getElementById("finalScore");
@@ -81,6 +85,7 @@ let controlHeight; // 아래쪽 조작용 검은 띠의 높이
 let player, poops, score, level, lives, levelFrames, spawnTimer, spawnInterval;
 let bigPoopSpawnedThisWindow, bigPoopSpawnFrame;
 let invincibleFrames, running, keys;
+let paused = false;
 
 function resize() {
   width = window.innerWidth;
@@ -117,6 +122,9 @@ const MAX_LIVES = 3;
 const LEVEL_DURATION_FRAMES = 30 * 60; // 30초 (60fps 기준)
 const HIT_INVINCIBLE_FRAMES = 75;
 const BIG_POOP_LEVEL_INTERVAL = 5;
+// 캐릭터보다 이만큼(px) 더 위부터 화면을 누르면 일시정지로 취급합니다.
+// 캐릭터 바로 위/조작 띠 쪽은 그대로 이동 조작용으로 남겨둡니다.
+const PAUSE_ZONE_MARGIN = 30;
 
 // ---------- 게임 상태 ----------
 // (변수 선언은 resize() 보다 위, 캔버스 크기 부분에 있습니다)
@@ -156,6 +164,8 @@ function resetGame() {
   spawnInterval = currentSpawnInterval();
   invincibleFrames = 0;
   keys = { left: false, right: false };
+  paused = false;
+  pauseScreen.classList.add("hidden");
   scheduleBigPoopIfNeeded();
   updateHud();
 }
@@ -202,18 +212,50 @@ function pointerToTargetX(clientX) {
   return clientX - rect.left;
 }
 
+function pointerToCanvasY(clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return clientY - rect.top;
+}
+
+// 캐릭터보다 PAUSE_ZONE_MARGIN 만큼 더 위(놀이 영역 대부분)를 눌렀는지 판단합니다.
+function isInPauseZone(clientY) {
+  if (!player) return false;
+  return pointerToCanvasY(clientY) < player.y - PAUSE_ZONE_MARGIN;
+}
+
+function togglePause() {
+  if (!running) return;
+  paused = !paused;
+  if (paused) {
+    cancelAnimationFrame(rafId);
+    keys.left = false;
+    keys.right = false;
+    pauseScreen.classList.remove("hidden");
+  } else {
+    pauseScreen.classList.add("hidden");
+    lastTimestamp = null;
+    rafId = requestAnimationFrame(loop);
+  }
+}
+
 // 손가락을 대고 "움직여야" 따라옵니다.
 // 톡 누르면 그 자리로 걸어가던 동작은 뺐습니다 — 피하려다 잘못 누르면
 // 캐릭터가 엉뚱한 곳으로 가버렸습니다.
 let touchStartX = null;
 
 canvas.addEventListener("touchstart", (e) => {
-  if (!running) return;
-  touchStartX = e.touches[0].clientX;
+  if (!running || paused) return;
+  const touch = e.touches[0];
+  if (isInPauseZone(touch.clientY)) {
+    togglePause();
+    touchStartX = null;
+    return;
+  }
+  touchStartX = touch.clientX;
 }, { passive: true });
 
 canvas.addEventListener("touchmove", (e) => {
-  if (!running) return;
+  if (!running || paused) return;
   const x = e.touches[0].clientX;
   // 살짝 흔들린 정도는 무시하고, 실제로 움직였을 때부터 따라갑니다.
   if (touchStartX != null && Math.abs(x - touchStartX) < 4 && player.targetX == null) return;
@@ -227,11 +269,16 @@ canvas.addEventListener("touchend", () => {
 let mouseDown = false;
 let mouseStartX = null;
 canvas.addEventListener("mousedown", (e) => {
+  if (!running || paused) return;
+  if (isInPauseZone(e.clientY)) {
+    togglePause();
+    return;
+  }
   mouseDown = true;
   mouseStartX = e.clientX;
 });
 canvas.addEventListener("mousemove", (e) => {
-  if (!running || !mouseDown) return;
+  if (!running || paused || !mouseDown) return;
   if (mouseStartX != null && Math.abs(e.clientX - mouseStartX) < 4 && player.targetX == null) return;
   player.targetX = pointerToTargetX(e.clientX);
 });
@@ -532,4 +579,22 @@ function endGame() {
 restartBtn.addEventListener("click", () => {
   gameoverScreen.classList.add("hidden");
   selectScreen.classList.remove("hidden");
+});
+
+pauseRestartBtn.addEventListener("click", () => {
+  startGame(); // 같은 캐릭터로 처음부터 다시 시작 (resetGame이 pauseScreen도 가려줍니다)
+});
+
+pauseSelectBtn.addEventListener("click", () => {
+  running = false;
+  paused = false;
+  cancelAnimationFrame(rafId);
+  pauseScreen.classList.add("hidden");
+  hud.classList.add("hidden");
+  selectScreen.classList.remove("hidden");
+});
+
+// 버튼이 아니라 배경(오버레이 자체)을 누르면 다시 탭한 것으로 보고 이어합니다.
+pauseScreen.addEventListener("click", (e) => {
+  if (e.target === pauseScreen) togglePause();
 });
