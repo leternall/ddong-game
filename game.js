@@ -273,22 +273,26 @@ function isColliding(p, poop) {
 }
 
 // ---------- 업데이트 ----------
-function update() {
+// dt: 이번 프레임이 "60fps 기준 몇 프레임 치"의 시간이었는지 (1 = 정확히 1/60초).
+// 기기 주사율(60/90/120Hz)이나 프레임 드랍과 무관하게 항상 같은 속도로
+// 보이도록, 프레임 수 대신 실제 경과 시간(delta time)에 맞춰 움직입니다.
+function update(dt) {
   // 플레이어 이동
+  const moveStep = PLAYER_SPEED * dt;
   if (player.targetX != null) {
     const center = player.x + player.w / 2;
     const diff = player.targetX - center;
-    player.x += Math.max(-PLAYER_SPEED, Math.min(PLAYER_SPEED, diff));
+    player.x += Math.max(-moveStep, Math.min(moveStep, diff));
   } else {
-    if (keys.left) player.x -= PLAYER_SPEED;
-    if (keys.right) player.x += PLAYER_SPEED;
+    if (keys.left) player.x -= moveStep;
+    if (keys.right) player.x += moveStep;
   }
   player.x = Math.max(0, Math.min(width - player.w, player.x));
 
-  if (invincibleFrames > 0) invincibleFrames--;
+  if (invincibleFrames > 0) invincibleFrames = Math.max(0, invincibleFrames - dt);
 
   // 레벨 타이머
-  levelFrames++;
+  levelFrames += dt;
   if (levelFrames >= LEVEL_DURATION_FRAMES) {
     levelFrames = 0;
     const clearedLevel = level;
@@ -307,7 +311,7 @@ function update() {
   }
 
   // 일반 똥 스폰
-  spawnTimer++;
+  spawnTimer += dt;
   if (spawnTimer >= spawnInterval) {
     spawnTimer = 0;
     spawnPoop(false);
@@ -322,8 +326,8 @@ function update() {
   // 똥 이동 + 충돌
   for (let i = poops.length - 1; i >= 0; i--) {
     const poop = poops[i];
-    poop.y += poop.speed;
-    poop.rot += poop.rotSpeed;
+    poop.y += poop.speed * dt;
+    poop.rot += poop.rotSpeed * dt;
 
     if (invincibleFrames <= 0 && isColliding(player, poop)) {
       poops.splice(i, 1);
@@ -429,9 +433,16 @@ function draw() {
 
 // ---------- 루프 ----------
 let rafId;
-function loop() {
+let lastTimestamp = null;
+function loop(timestamp) {
   if (!running) return;
-  update();
+  if (lastTimestamp == null) lastTimestamp = timestamp;
+  // 60fps 기준 "몇 프레임 치" 시간이 지났는지. 탭 전환 등으로 갑자기 크게
+  // 벌어진 간격은 3프레임(약 50ms) 치로 잘라내 순간이동/즉사를 방지합니다.
+  const dt = Math.min(3, (timestamp - lastTimestamp) / (1000 / 60));
+  lastTimestamp = timestamp;
+
+  update(dt);
   if (running) {
     draw();
     rafId = requestAnimationFrame(loop);
@@ -494,7 +505,8 @@ function startGame() {
   gameoverScreen.classList.add("hidden");
   hud.classList.remove("hidden");
   cancelAnimationFrame(rafId);
-  loop();
+  lastTimestamp = null;
+  rafId = requestAnimationFrame(loop);
 }
 
 function endGame() {
