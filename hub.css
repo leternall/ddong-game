@@ -18,6 +18,41 @@ body {
   color: #fff;
 }
 
+#pullRefresh {
+  position: fixed;
+  top: -50px;
+  left: 0;
+  right: 0;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
+  font-weight: bold;
+  pointer-events: none;
+  z-index: 50;
+  transition: transform 0.25s ease;
+}
+
+#pullRefresh.dragging {
+  transition: none;
+}
+
+#pullRefresh.ready {
+  color: #ffcc00;
+}
+
+#pullRefresh.spinning .spin-icon {
+  animation: pull-refresh-spin 0.6s linear infinite;
+}
+
+@keyframes pull-refresh-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 #hub-container {
   min-height: 100%;
   overflow-y: auto;

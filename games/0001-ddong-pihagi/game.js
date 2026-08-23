@@ -291,6 +291,26 @@ function togglePause() {
   }
 }
 
+// ---------- 뒤로가기 = 일시정지 ----------
+// 게임 중 실수로 브라우저/기기 뒤로가기를 누르면 허브로 튕겨나가는 대신
+// 일시정지로 취급합니다. 일시정지 중에 뒤로가기를 한 번 더 누르면 계속하기와
+// 같습니다. history에 가짜 항목을 하나 심어두고, 그게 팝될 때(=뒤로가기)마다
+// 다시 심어서 계속 붙잡아두는 방식입니다. 게임이 running이 아닐 때(선택/결과
+// 화면)는 심지 않아 뒤로가기가 평소처럼 동작합니다.
+let backTrapArmed = false;
+function armBackTrapIfNeeded() {
+  if (backTrapArmed) return;
+  history.pushState({ ddongBackTrap: true }, "", location.href);
+  backTrapArmed = true;
+}
+window.addEventListener("popstate", () => {
+  backTrapArmed = false;
+  if (running) {
+    togglePause();
+    armBackTrapIfNeeded();
+  }
+});
+
 // 손가락을 대고 "움직여야" 따라옵니다.
 // 톡 누르면 그 자리로 걸어가던 동작은 뺐습니다 — 피하려다 잘못 누르면
 // 캐릭터가 엉뚱한 곳으로 가버렸습니다.
@@ -615,6 +635,7 @@ function startGame() {
   cancelAnimationFrame(rafId);
   lastTimestamp = null;
   rafId = requestAnimationFrame(loop);
+  armBackTrapIfNeeded();
 }
 
 function endGame() {

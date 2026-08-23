@@ -101,18 +101,75 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") enter();
 });
 
-// 스와이프로도 넘길 수 있게
+// ---------- 좌우 스와이프 + 아래로 당겨서 새로고침 ----------
+// 두 제스처 모두 손가락 시작점이 같아서(터치 시작), 하나의 touchstart/move/end
+// 세트로 같이 다루고 끝에서 더 크게 움직인 축(가로/세로)으로 어느 쪽인지 가릅니다.
+const pullIndicator = document.getElementById("pullRefresh");
+const pullIndicatorText = document.getElementById("pullRefreshText");
+const PULL_RESISTANCE = 0.45; // 손가락 이동량보다 인디케이터가 덜 내려오게(저항감)
+const PULL_THRESHOLD = 70;    // 이만큼 내려오면 손을 뗐을 때 새로고침
+const PULL_MAX = 90;          // 인디케이터가 내려오는 최대 거리
+let refreshing = false;
+
 let touchStartX = null;
+let touchStartY = null;
+let pullStartY = null;
+let pullDistance = 0;
+
 document.body.addEventListener("touchstart", (e) => {
-  touchStartX = e.touches[0].clientX;
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  // 허브는 세로 스크롤이 없어 항상 맨 위이므로, 새로고침 중이 아니면 당기기로 취급합니다.
+  pullStartY = !refreshing ? t.clientY : null;
+  pullDistance = 0;
+  pullIndicator.classList.add("dragging");
+}, { passive: true });
+
+document.body.addEventListener("touchmove", (e) => {
+  if (pullStartY == null) return;
+  const rawDy = e.touches[0].clientY - pullStartY;
+  if (rawDy <= 0) {
+    pullDistance = 0;
+    pullIndicator.style.transform = "translateY(0px)";
+    pullIndicator.classList.remove("ready");
+    return;
+  }
+  pullDistance = Math.min(PULL_MAX, rawDy * PULL_RESISTANCE);
+  pullIndicator.style.transform = `translateY(${pullDistance}px)`;
+  const ready = pullDistance >= PULL_THRESHOLD;
+  pullIndicator.classList.toggle("ready", ready);
+  pullIndicatorText.textContent = ready ? "손을 떼면 새로고침" : "아래로 당겨서 새로고침";
 }, { passive: true });
 
 document.body.addEventListener("touchend", (e) => {
-  if (touchStartX == null) return;
-  const dx = e.changedTouches[0].clientX - touchStartX;
+  const changed = e.changedTouches[0];
+  const dx = touchStartX != null ? changed.clientX - touchStartX : 0;
+  const dy = touchStartY != null ? changed.clientY - touchStartY : 0;
+
+  pullIndicator.classList.remove("dragging");
+
+  if (pullDistance >= PULL_THRESHOLD) {
+    refreshing = true;
+    pullIndicator.classList.add("spinning");
+    pullIndicator.classList.remove("ready");
+    pullIndicatorText.textContent = "새로고침 중...";
+    pullIndicator.style.transform = `translateY(${PULL_MAX}px)`;
+    setTimeout(() => location.reload(), 300);
+  } else {
+    pullIndicator.classList.remove("ready");
+    pullIndicator.style.transform = "translateY(0px)";
+    // 세로로 당기던 제스처가 아니라 가로로 민 경우에만 게임 넘기기로 처리합니다.
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (dx > 0) goTo(index - 1);
+      else goTo(index + 1);
+    }
+  }
+
   touchStartX = null;
-  if (dx > 40) goTo(index - 1);
-  else if (dx < -40) goTo(index + 1);
+  touchStartY = null;
+  pullStartY = null;
+  pullDistance = 0;
 }, { passive: true });
 
 render();

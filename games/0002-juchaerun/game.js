@@ -271,6 +271,21 @@ function togglePause() {
   }
 }
 
+// ---------- 뒤로가기 = 일시정지 (0001과 동일한 방식) ----------
+let backTrapArmed = false;
+function armBackTrapIfNeeded() {
+  if (backTrapArmed) return;
+  history.pushState({ ddongBackTrap: true }, "", location.href);
+  backTrapArmed = true;
+}
+window.addEventListener("popstate", () => {
+  backTrapArmed = false;
+  if (running) {
+    togglePause();
+    armBackTrapIfNeeded();
+  }
+});
+
 canvas.addEventListener("touchstart", (e) => {
   if (!running || paused) return;
   if (isInPauseZone(e.touches[0].clientY)) togglePause();
@@ -563,6 +578,7 @@ function startGame() {
   cancelAnimationFrame(rafId);
   lastTimestamp = null;
   rafId = requestAnimationFrame(loop);
+  armBackTrapIfNeeded();
 }
 
 function endGame() {
