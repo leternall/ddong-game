@@ -74,87 +74,92 @@ html, body {
 
 #board {
   flex: 1 1 auto;
-  overflow-y: auto;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: repeat(var(--cols, 4), 1fr);
-  gap: 10px;
-  padding: 10px 14px 24px;
-  align-content: start;
-  max-width: 520px;
-  width: 100%;
-  margin: 0 auto;
+  justify-content: center;
+  align-content: center;
+  gap: 6px;
+  padding: 6px;
+  position: relative;
+}
+
+#countdown {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 96px;
+  font-weight: bold;
+  color: #ffcc00;
+  text-shadow: 0 4px 14px rgba(0,0,0,0.6);
+  z-index: 5;
+  pointer-events: none;
+}
+
+#countdown.hidden {
+  display: none;
 }
 
 .card {
-  aspect-ratio: 3 / 4;
-  perspective: 700px;
+  min-width: 0;
+  min-height: 0;
   cursor: pointer;
-}
-
-.card-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transition: transform 0.35s;
-  transform-style: preserve-3d;
-}
-
-.card.flipped .card-inner {
-  transform: rotateY(180deg);
+  container-type: size;
 }
 
 .card.matched {
   cursor: default;
 }
 
-.card.matched .card-front {
-  box-shadow: 0 0 0 3px #4caf50 inset;
-}
-
-.card.matched .card-front::after {
-  content: "✓";
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #4caf50;
-  color: #fff;
-  font-size: 14px;
-  font-weight: bold;
-  border-radius: 999px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-}
-
 .card-face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
+  position: relative;
+  width: 100%;
+  height: 100%;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-}
-
-.card-back {
   background: linear-gradient(135deg, #ffcc00, #ff9500);
-  font-size: clamp(28px, 9vw, 56px);
+  font-size: min(72cqw, 72cqh);
+  line-height: 1;
+  transition: transform 0.15s linear;
 }
 
-.card-front {
+.card.flipping .card-face {
+  transform: scaleX(0);
+}
+
+.card-face.is-front {
   background: #fff;
-  transform: rotateY(180deg);
-  font-size: clamp(32px, 10vw, 64px);
 }
 
-.card-front img {
+.card-face img {
   width: 92%;
   height: 92%;
   object-fit: contain;
+}
+
+.card.matched .card-face {
+  box-shadow: 0 0 0 3px #4caf50 inset;
+}
+
+.card.matched .card-face::after {
+  content: "✓";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #4caf50;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 
 .overlay {

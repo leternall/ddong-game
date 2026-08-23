@@ -8,6 +8,7 @@ const mistakesEl = document.getElementById("mistakes");
 const pauseBtn = document.getElementById("pauseBtn");
 
 const board = document.getElementById("board");
+const countdownEl = document.getElementById("countdown");
 
 const startScreen = document.getElementById("start-screen");
 const startBtn = document.getElementById("startBtn");
@@ -29,10 +30,13 @@ const levelupToast = document.getElementById("levelup-toast");
 const RANKING_KEY = "gieokryeok-rankings";
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 const MAX_MISTAKES_PER_LEVEL = 20;
+const MAX_LEVEL = 12;
+const BOARD_GAP = 6;
 
-// ---------- 64종 카드 풀 ----------
+// ---------- 카드 풀 ----------
 // 01~08번: 똥피하기 캐릭터 이미지를 그대로 재사용합니다(에셋 중복 없이 상대경로로 참조).
-// 09~64번: 귀여운 동물 이모지 56종.
+// 09~64번: 귀여운 동물 이모지 56종. 같은 동물의 다른 포즈(원숭이 3종, 병아리 2종,
+// 고래 2종)는 중복으로 보이니 하나씩만 남기고 다른 동물로 교체했습니다.
 const CHARACTER_IMAGE_SRCS = [
   "../0001-ddong-pihagi/assets/character_girl.png",
   "../0001-ddong-pihagi/assets/character_magpie.png",
@@ -46,10 +50,10 @@ const CHARACTER_IMAGE_SRCS = [
 
 const ANIMAL_EMOJIS = [
   "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯",
-  "🦁", "🐮", "🐷", "🦦", "🐸", "🐵", "🙈", "🙉", "🙊", "🐔",
-  "🐧", "🐦", "🐤", "🐣", "🐥", "🦆", "🦉", "🦇", "🐺", "🐗",
+  "🦁", "🐮", "🐷", "🦦", "🐸", "🐵", "🦥", "🦭", "🦌", "🐔",
+  "🐧", "🐦", "🐤", "🦜", "🦩", "🦆", "🦉", "🦇", "🐺", "🐗",
   "🐴", "🦄", "🐝", "🐛", "🦋", "🐌", "🐞", "🐢", "🦎", "🐙",
-  "🦑", "🦐", "🦀", "🐡", "🐠", "🐟", "🐬", "🐳", "🐋", "🦓",
+  "🦑", "🦐", "🦀", "🐡", "🐠", "🐟", "🐬", "🐳", "🦡", "🦓",
   "🐘", "🦒", "🐐", "🐑", "🐿️", "🦔",
 ];
 
@@ -78,8 +82,6 @@ function shuffle(arr) {
 // ---------- 게임 상태 ----------
 let running = false;
 let paused = false;
-let sessionPool = [];
-let poolIndex = 0;
 let level = 1;
 let score = 0;
 let wrongThisLevel = 0;
@@ -88,6 +90,7 @@ let levelPairs = 0;
 let boardLocked = false;
 let firstCard = null;
 let secondCard = null;
+let currentCardCount = 0;
 
 let elapsedMs = 0;
 let segmentStart = null;
@@ -129,61 +132,124 @@ function showLevelUpToast(text) {
   }, 1200);
 }
 
-// ---------- 보드 구성 ----------
-function buildBoard(characters) {
-  let cards = [];
-  characters.forEach((c, idx) => {
-    cards.push({ charIndex: idx, ...c });
-    cards.push({ charIndex: idx, ...c });
-  });
-  cards = shuffle(cards);
+// ---------- 보드 칸 크기 계산 ----------
+// 카드 수에 맞춰 화면을 스크롤 없이 꽉 채우는 열/행 수와 카드 크기를 구합니다.
+function measureBoardBox() {
+  const cs = getComputedStyle(board);
+  const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  return { w: board.clientWidth - padX, h: board.clientHeight - padY };
+}
 
-  const cols = cards.length <= 4 ? 2 : 4;
-  board.style.setProperty("--cols", cols);
-  board.innerHTML = "";
+function computeGridLayout(n, w, h, gap) {
+  // 정사각형에 가까운 배치(예: 4장→2x2, 48장→6x8)를 우선하고, 그 열 수가
+  // n의 약수라 빈 칸 없이 딱 맞아떨어지면 그걸 씁니다. 딱 맞는 약수가 너무
+  // 멀리 떨어져 있으면(찌그러진 격자가 되면) 그냥 정사각형에 가까운 열 수를
+  // 그대로 써서 마지막 줄 몇 칸만 비웁니다.
+  const idealCols = Math.max(1, Math.round(Math.sqrt(n)));
+  let cols = idealCols;
+  let bestDist = Infinity;
+  for (let c = 1; c <= n; c++) {
+    if (n % c !== 0) continue;
+    const dist = Math.abs(c - idealCols);
+    if (dist < bestDist) {
+      bestDist = dist;
+      cols = c;
+    }
+  }
+  if (bestDist > 2) cols = idealCols;
 
-  cards.forEach((card) => {
-    const el = document.createElement("div");
-    el.className = "card";
+  const rows = Math.ceil(n / cols);
+  const cellW = (w - (cols - 1) * gap) / cols;
+  const cellH = (h - (rows - 1) * gap) / rows;
+  return { cols, rows, cellW, cellH };
+}
 
-    const inner = document.createElement("div");
-    inner.className = "card-inner";
+function relayoutBoard() {
+  if (!currentCardCount) return;
+  const { w, h } = measureBoardBox();
+  const layout = computeGridLayout(currentCardCount, w, h, BOARD_GAP);
+  board.style.gridTemplateColumns = `repeat(${layout.cols}, ${layout.cellW}px)`;
+  board.style.gridTemplateRows = `repeat(${layout.rows}, ${layout.cellH}px)`;
+}
 
-    const back = document.createElement("div");
-    back.className = "card-face card-back";
-    back.textContent = "❓";
+window.addEventListener("resize", () => {
+  if (running) relayoutBoard();
+});
 
-    const front = document.createElement("div");
-    front.className = "card-face card-front";
+// ---------- 카드 앞/뒷면 표시 ----------
+function setFaceContent(faceEl, showFront, card) {
+  faceEl.classList.toggle("is-front", showFront);
+  faceEl.innerHTML = "";
+  if (showFront) {
     if (card.type === "img") {
       const img = document.createElement("img");
       img.src = card.src;
-      front.appendChild(img);
+      faceEl.appendChild(img);
     } else {
-      front.textContent = card.emoji;
+      faceEl.textContent = card.emoji;
     }
-
-    inner.appendChild(back);
-    inner.appendChild(front);
-    el.appendChild(inner);
-
-    el.addEventListener("click", () => onCardClick(el, card));
-    board.appendChild(el);
-  });
+  } else {
+    faceEl.textContent = "❓";
+  }
 }
 
-function onCardClick(el, card) {
-  if (!running || paused || boardLocked) return;
-  if (el.classList.contains("flipped") || el.classList.contains("matched")) return;
+function animateFlip(el, faceEl, showFront, card) {
+  el.classList.add("flipping");
+  setTimeout(() => {
+    setFaceContent(faceEl, showFront, card);
+  }, 150);
+  setTimeout(() => {
+    el.classList.remove("flipping");
+  }, 300);
+}
 
-  el.classList.add("flipped");
+// ---------- 보드 구성 ----------
+function buildBoard(characters) {
+  let cardsData = [];
+  characters.forEach((c, idx) => {
+    cardsData.push({ charIndex: idx, ...c });
+    cardsData.push({ charIndex: idx, ...c });
+  });
+  cardsData = shuffle(cardsData);
+
+  currentCardCount = cardsData.length;
+  board.innerHTML = "";
+  board.appendChild(countdownEl);
+  relayoutBoard();
+
+  const cardEls = [];
+  cardsData.forEach((card) => {
+    const el = document.createElement("div");
+    el.className = "card up";
+
+    const face = document.createElement("div");
+    face.className = "card-face";
+    setFaceContent(face, true, card);
+
+    el.appendChild(face);
+    board.appendChild(el);
+
+    el.addEventListener("click", () => onCardClick(el, face, card));
+    cardEls.push({ el, face, card });
+  });
+
+  return cardEls;
+}
+
+function onCardClick(el, faceEl, card) {
+  if (!running || paused || boardLocked) return;
+  if (el.classList.contains("up") || el.classList.contains("matched")) return;
+
+  el.classList.add("up");
+  animateFlip(el, faceEl, true, card);
 
   if (!firstCard) {
-    firstCard = { el, card };
+    firstCard = { el, faceEl, card };
     return;
   }
 
-  secondCard = { el, card };
+  secondCard = { el, faceEl, card };
   boardLocked = true;
 
   const isMatch = firstCard.card.charIndex === secondCard.card.charIndex;
@@ -203,15 +269,17 @@ function onCardClick(el, card) {
       if (matchedThisLevel === levelPairs) {
         onLevelClear();
       }
-    }, 250);
+    }, 400);
   } else {
     wrongThisLevel++;
     updateHud();
     const a = firstCard;
     const b = secondCard;
     setTimeout(() => {
-      a.el.classList.remove("flipped");
-      b.el.classList.remove("flipped");
+      a.el.classList.remove("up");
+      b.el.classList.remove("up");
+      animateFlip(a.el, a.faceEl, false, null);
+      animateFlip(b.el, b.faceEl, false, null);
       firstCard = null;
       secondCard = null;
       boardLocked = false;
@@ -219,30 +287,61 @@ function onCardClick(el, card) {
       if (wrongThisLevel > MAX_MISTAKES_PER_LEVEL) {
         endGame(false);
       }
-    }, 800);
+    }, 900);
   }
+}
+
+// ---------- 레벨 시작 전 미리보기(3초) ----------
+function beginPreview(cardEls) {
+  boardLocked = true;
+  pauseBtn.classList.add("hidden");
+
+  if (segmentStart) {
+    elapsedMs += Date.now() - segmentStart;
+    segmentStart = null;
+  }
+
+  let count = 3;
+  countdownEl.textContent = count;
+  countdownEl.classList.remove("hidden");
+
+  const tick = () => {
+    count--;
+    if (count > 0) {
+      countdownEl.textContent = count;
+      setTimeout(tick, 1000);
+    } else {
+      countdownEl.classList.add("hidden");
+      cardEls.forEach(({ el, face }) => {
+        el.classList.remove("up");
+        animateFlip(el, face, false, null);
+      });
+      showLevelUpToast("Start!");
+      boardLocked = false;
+      pauseBtn.classList.remove("hidden");
+      if (!segmentStart) segmentStart = Date.now();
+    }
+  };
+  setTimeout(tick, 1000);
 }
 
 // ---------- 레벨/게임 진행 ----------
 function startLevel() {
-  const remaining = CHARACTER_POOL.length - poolIndex;
-  const desiredPairs = level * 2;
-  levelPairs = Math.min(desiredPairs, remaining);
-  const chosen = sessionPool.slice(poolIndex, poolIndex + levelPairs);
-  poolIndex += levelPairs;
+  levelPairs = level * 2;
+  const chosen = shuffle(CHARACTER_POOL).slice(0, levelPairs);
 
   wrongThisLevel = 0;
   matchedThisLevel = 0;
-  boardLocked = false;
   firstCard = null;
   secondCard = null;
 
   updateHud();
-  buildBoard(chosen);
+  const cardEls = buildBoard(chosen);
+  beginPreview(cardEls);
 }
 
 function onLevelClear() {
-  if (poolIndex >= CHARACTER_POOL.length) {
+  if (level >= MAX_LEVEL) {
     endGame(true);
     return;
   }
@@ -344,20 +443,17 @@ function renderRanking(rankInfo) {
 
 // ---------- 시작/종료 ----------
 function startGame() {
-  sessionPool = shuffle(CHARACTER_POOL);
-  poolIndex = 0;
   level = 1;
   score = 0;
   paused = false;
   elapsedMs = 0;
-  segmentStart = Date.now();
+  segmentStart = null;
   running = true;
 
   startScreen.classList.add("hidden");
   resultScreen.classList.add("hidden");
   pauseScreen.classList.add("hidden");
   hud.classList.remove("hidden");
-  pauseBtn.classList.remove("hidden");
 
   updateHud();
   timerEl.textContent = formatTime(0);
