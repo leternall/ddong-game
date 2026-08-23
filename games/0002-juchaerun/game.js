@@ -272,11 +272,12 @@ function togglePause() {
 }
 
 // ---------- 뒤로가기 = 일시정지 (0001과 동일한 방식) ----------
-// history에 가짜 항목을 여러 개(BACK_TRAP_CUSHION) 미리 쌓아두고 뒤로가기로
-// 하나씩 소모될 때마다 다시 채워 넣습니다 — 매번 딱 1개씩만 재예치하면
-// 기기에 따라 뒤로가기를 연달아 빠르게 눌렀을 때 재예치가 따라가지 못해
-// 허브까지 밀려나가는 경우가 있어, 여유분을 넉넉히 둡니다.
-const BACK_TRAP_CUSHION = 4;
+// 중요: 크롬/삼성인터넷 등은 "뒤로가기를 못 나가게 막는 사이트"를 감지하면
+// (popstate와 같은 태스크 안에서 스크립트가 새 history 항목을 추가하는 패턴)
+// 그다음 뒤로가기부터는 우리가 쌓아둔 항목을 전부 건너뛰고 진짜 이전 페이지로
+// 보내버리는 방지 기능이 있습니다. 그래서 재예치(push)를 popstate 핸들러
+// 안에서 곧바로 하지 않고, setTimeout으로 한 틱 늦춰 "뒤로가기 처리와 같은
+// 태스크가 아니게" 만들어 이 감지를 피합니다.
 let trapDepth = 0;
 
 function pushTrapEntry() {
@@ -284,9 +285,13 @@ function pushTrapEntry() {
   trapDepth += 1;
 }
 
+// 게임을 시작할 때(뒤로가기로 인한 것이 아니라 캐릭터 선택으로 진입할 때)는
+// 감지 대상이 아니라서, 아주 빠른 연타에 대비해 여유분 2개를 한 번에 심어도
+// 안전합니다.
 function armBackTrap() {
   if (trapDepth > 0) return;
-  for (let i = 0; i < BACK_TRAP_CUSHION; i++) pushTrapEntry();
+  pushTrapEntry();
+  pushTrapEntry();
 }
 
 function clearBackTrap() {
@@ -300,7 +305,10 @@ window.addEventListener("popstate", () => {
   if (trapDepth > 0) trapDepth -= 1;
   if (running) {
     togglePause();
-    pushTrapEntry();
+    // 지연된 재예치가 도착하기 전에 사용자가 직접 나가기(다시 캐릭터
+    // 선택 등)를 눌러 clearBackTrap()이 이미 정리했을 수 있어, 그때는
+    // 다시 심지 않습니다.
+    setTimeout(() => { if (running) pushTrapEntry(); }, 50);
   }
 });
 
