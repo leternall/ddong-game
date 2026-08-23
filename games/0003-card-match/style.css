@@ -80,6 +80,8 @@ html, body {
   align-content: center;
   gap: 6px;
   padding: 6px;
+  /* 휴대폰 하단 제스처/내비게이션 바에 마지막 줄 카드가 가려지지 않도록. */
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));
   position: relative;
 }
 

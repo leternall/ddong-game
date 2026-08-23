@@ -92,11 +92,29 @@ function laneX(lane) {
   return (width / LANE_COUNT) * (lane + 0.5);
 }
 
+// 휴대폰 하단 제스처/내비게이션 바 높이(안전 영역)를 실측합니다.
+// env(safe-area-inset-bottom)은 JS에서 바로 읽을 수 없어, 그 값만큼
+// padding-bottom을 준 보이지 않는 엘리먼트의 실제 높이로 측정합니다.
+function getSafeAreaBottom() {
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;bottom:0;left:0;height:0;" +
+    "padding-bottom:env(safe-area-inset-bottom, 0px);" +
+    "visibility:hidden;pointer-events:none;";
+  document.body.appendChild(probe);
+  const value = probe.getBoundingClientRect().height;
+  document.body.removeChild(probe);
+  return value;
+}
+
 function resize() {
   width = window.innerWidth;
   height = window.innerHeight;
 
-  controlHeight = Math.max(100, Math.min(160, Math.round(height * 0.16)));
+  const safeBottom = getSafeAreaBottom();
+  // 조작 버튼이 화면 하단 안전 영역(제스처 바 등)에 가려지지 않도록
+  // 그만큼 조작 띠 높이에 더해줍니다.
+  controlHeight = Math.max(100, Math.min(160, Math.round(height * 0.16))) + safeBottom;
   playHeight = height - controlHeight;
 
   const dpr = window.devicePixelRatio || 1;

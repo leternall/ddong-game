@@ -99,12 +99,28 @@ let bigPoopSpawnedThisWindow, bigPoopSpawnFrame;
 let invincibleFrames, running, keys;
 let paused = false;
 
+// 휴대폰 하단 제스처/내비게이션 바 높이(안전 영역)를 실측합니다.
+// env(safe-area-inset-bottom)은 JS에서 바로 읽을 수 없어, 그 값만큼
+// padding-bottom을 준 보이지 않는 엘리먼트의 실제 높이로 측정합니다.
+function getSafeAreaBottom() {
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;bottom:0;left:0;height:0;" +
+    "padding-bottom:env(safe-area-inset-bottom, 0px);" +
+    "visibility:hidden;pointer-events:none;";
+  document.body.appendChild(probe);
+  const value = probe.getBoundingClientRect().height;
+  document.body.removeChild(probe);
+  return value;
+}
+
 function resize() {
   width = window.innerWidth;
   height = window.innerHeight;
 
-  // 조작 띠: 화면의 20% 정도, 너무 얇거나 두껍지 않게
-  controlHeight = Math.max(110, Math.min(190, Math.round(height * 0.2)));
+  // 조작 띠: 화면의 20% 정도, 너무 얇거나 두껍지 않게. 하단 안전 영역만큼
+  // 더 확보해서 조작 띠가 제스처 바에 가려지지 않게 합니다.
+  controlHeight = Math.max(110, Math.min(190, Math.round(height * 0.2))) + getSafeAreaBottom();
   playHeight = height - controlHeight;
 
   const dpr = window.devicePixelRatio || 1;
