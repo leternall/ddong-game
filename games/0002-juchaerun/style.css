@@ -82,10 +82,10 @@ body {
   right: 0;
   bottom: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-around;
-  gap: 12px;
-  padding: 0 24px;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
   background: #0b0b0f;
   border-top: 2px solid rgba(255,255,255,0.16);
 }
@@ -95,7 +95,6 @@ body {
 }
 
 #controls button {
-  flex: 0 0 auto;
   border: none;
   cursor: pointer;
   color: #fff;
@@ -103,20 +102,26 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* 좌우 버튼은 빈 공간 없이 화면 가장자리까지 터치 영역을 꽉 채웁니다
+   (점프 버튼 좌우로 남는 공간을 모두 흡수). */
 #leftBtn, #rightBtn {
-  width: 64px;
-  height: 64px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.15);
+  flex: 1 1 auto;
+  height: 100%;
+  border-radius: 0;
+  background: rgba(255,255,255,0.08);
   font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #leftBtn:active, #rightBtn:active {
-  background: rgba(255,255,255,0.3);
-  transform: scale(0.94);
+  background: rgba(255,255,255,0.2);
 }
 
 #jumpBtn {
+  flex: 0 0 auto;
+  align-self: center;
   width: 84px;
   height: 64px;
   border-radius: 999px;

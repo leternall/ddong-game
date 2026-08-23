@@ -130,12 +130,17 @@ body {
 #slideTitle {
   font-size: 22px;
   font-weight: bold;
+  /* 한글+영문이 섞이면(예: "쭈채Run") 폰트별 줄 높이가 달라 카드마다
+     미묘하게 높이가 어긋날 수 있어, 줄 높이를 고정값으로 못박습니다. */
+  line-height: 28px;
+  height: 28px;
 }
 
 #slideDesc {
   font-size: 14px;
   opacity: 0.75;
-  min-height: 18px;
+  line-height: 18px;
+  height: 18px;
   width: 100%;
   white-space: nowrap;
   overflow: hidden;
