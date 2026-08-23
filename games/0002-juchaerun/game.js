@@ -64,11 +64,8 @@ function buildCharacterSelect() {
     card.className = "character-card";
     const img = document.createElement("img");
     img.src = c.src;
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = c.name;
+    img.alt = c.name;
     card.appendChild(img);
-    card.appendChild(name);
     card.addEventListener("click", () => {
       selectedCharacter = c;
       startGame();
