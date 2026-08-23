@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>쭈채런</title>
-<link rel="stylesheet" href="style.css?v=5">
+<title>쭈채Run</title>
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
   <div id="game-container">
@@ -14,25 +14,25 @@
     <div id="hud" class="hidden">
       <div id="hud-left">
         <div id="score">점수: 0</div>
-        <div id="distance">거리: 0m / 100m</div>
+        <div id="distance">레벨 1 · 0m / 100m</div>
       </div>
       <div id="lives"></div>
     </div>
 
     <div id="controls" class="hidden">
       <button id="leftBtn" aria-label="왼쪽 이동">◀</button>
-      <button id="rightBtn" aria-label="오른쪽 이동">▶</button>
       <button id="jumpBtn" aria-label="점프">점프</button>
+      <button id="rightBtn" aria-label="오른쪽 이동">▶</button>
     </div>
 
     <div id="select-screen" class="overlay">
       <a id="homeLink" href="../../index.html">← 허브로</a>
-      <h1>🏃 쭈채런 🏃</h1>
+      <h1>🏃 쭈채Run 🏃</h1>
       <p>캐릭터를 선택하세요</p>
       <div id="character-list"></div>
       <p class="hint">
         ◀ ▶ 버튼으로 세 줄(왼쪽·가운데·오른쪽) 사이를 이동하고, 점프 버튼으로 구덩이를 뛰어넘으세요.<br>
-        나무·바위는 옆줄로 피하고, 고기를 먹으면 +10점 · 100m를 달리면 골인!
+        나무·바위는 옆줄로 피하고, 고기를 먹으면 +10점 · 100m마다 레벨업하며 점점 빨라집니다!
       </p>
     </div>
 
@@ -55,6 +55,6 @@
     <div id="levelup-toast" class="hidden"></div>
   </div>
 
-  <script src="game.js?v=4"></script>
+  <script src="game.js?v=5"></script>
 </body>
 </html>

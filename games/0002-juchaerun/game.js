@@ -1,4 +1,4 @@
-// ===== 쭈채런: 3줄 달리기 게임 =====
+// ===== 쭈채Run: 3줄 달리기 게임 =====
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -83,7 +83,7 @@ let width, height;
 let playHeight;
 let controlHeight;
 
-let player, entities, score, lives, distanceM, distancePx;
+let player, entities, score, lives, level, distanceM, distancePx;
 let meatEaten;
 let spawnTimer, spawnInterval;
 let invincibleFrames, running, paused;
@@ -161,24 +161,37 @@ const JUMP_HEIGHT = 46;
 const PAUSE_ZONE_MARGIN = 30;
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 
-const GOAL_METERS = 100;
+const LEVEL_DISTANCE = 100; // 100m마다 레벨업
 const METER_SCORE = 5;
 const MEAT_SCORE = 10;
 const MEAT_PER_LIFE = 50;
 const PX_PER_METER = 60;
-const BASE_SPEED = 4;
-const SPEED_GROWTH_PER_METER = 0.035;
+// 레벨 1은 느긋하게 시작해서 레벨이 오를수록 점점 빨라지고 장애물도 늘어납니다.
+const BASE_SPEED = 2.6;
+const SPEED_GROWTH_PER_LEVEL = 0.6;
 const MAX_SPEED = 13;
+const BASE_SPAWN_INTERVAL = 78;
+const SPAWN_INTERVAL_DECAY_PER_LEVEL = 4;
+const MIN_SPAWN_INTERVAL = 30;
 const COLLIDE_BAND = 26;
 
 resize();
 
 function currentSpeed() {
-  return Math.min(MAX_SPEED, BASE_SPEED + distanceM * SPEED_GROWTH_PER_METER);
+  return Math.min(MAX_SPEED, BASE_SPEED + (level - 1) * SPEED_GROWTH_PER_LEVEL);
 }
 
 function currentSpawnInterval() {
-  return Math.max(30, 62 - distanceM * 0.3);
+  return Math.max(MIN_SPAWN_INTERVAL, BASE_SPAWN_INTERVAL - (level - 1) * SPAWN_INTERVAL_DECAY_PER_LEVEL);
+}
+
+// 레벨이 오를수록 장애물이 2개 겹쳐 나오는 웨이브 비중이 늘고, 아예 없는
+// 웨이브 비중은 줄어듭니다(그래도 한 줄은 항상 비워둡니다).
+function obstacleWaveProbabilities() {
+  const twoProb = Math.min(0.45, 0.06 + (level - 1) * 0.05);
+  const zeroProb = Math.max(0.10, 0.4 - (level - 1) * 0.04);
+  const oneProb = 1 - twoProb - zeroProb;
+  return { zeroProb, oneProb, twoProb };
 }
 
 function resetGame() {
@@ -193,6 +206,7 @@ function resetGame() {
   entities = [];
   score = 0;
   lives = MAX_LIVES;
+  level = 1;
   distanceM = 0;
   distancePx = 0;
   meatEaten = 0;
@@ -206,7 +220,8 @@ function resetGame() {
 
 function updateHud() {
   scoreEl.textContent = `점수: ${score}`;
-  distanceEl.textContent = `거리: ${distanceM}m / ${GOAL_METERS}m`;
+  const distanceInLevel = distanceM % LEVEL_DISTANCE;
+  distanceEl.textContent = `레벨 ${level} · ${distanceInLevel}m / ${LEVEL_DISTANCE}m`;
   livesEl.innerHTML = "";
   for (let i = 0; i < MAX_LIVES; i++) {
     const span = document.createElement("span");
@@ -299,8 +314,9 @@ window.addEventListener("keydown", (e) => {
 function spawnWave() {
   const lanes = [0, 1, 2];
   // 최소 한 줄은 항상 비워둬서 반드시 피할 길이 있게 합니다.
+  const { zeroProb, oneProb } = obstacleWaveProbabilities();
   const r = Math.random();
-  const obstacleCount = r < 0.2 ? 0 : r < 0.75 ? 1 : 2;
+  const obstacleCount = r < zeroProb ? 0 : r < zeroProb + oneProb ? 1 : 2;
 
   const shuffled = lanes.slice().sort(() => Math.random() - 0.5);
   const obstacleLanes = shuffled.slice(0, obstacleCount);
@@ -331,18 +347,21 @@ function update(dt) {
   if (player.jumpFrames > 0) player.jumpFrames = Math.max(0, player.jumpFrames - dt);
   if (invincibleFrames > 0) invincibleFrames = Math.max(0, invincibleFrames - dt);
 
-  // 거리 진행
+  // 거리 진행 (끝없이 누적되며, 100m마다 레벨업)
   const speed = currentSpeed();
   distancePx += speed * dt;
-  const newDistanceM = Math.min(GOAL_METERS, Math.floor(distancePx / PX_PER_METER));
+  const newDistanceM = Math.floor(distancePx / PX_PER_METER);
   if (newDistanceM > distanceM) {
     score += (newDistanceM - distanceM) * METER_SCORE;
     distanceM = newDistanceM;
-    updateHud();
-    if (distanceM >= GOAL_METERS) {
-      endGame(true);
-      return;
+
+    const newLevel = Math.floor(distanceM / LEVEL_DISTANCE) + 1;
+    if (newLevel > level) {
+      level = newLevel;
+      spawnInterval = currentSpawnInterval();
+      showLevelUpToast(`레벨 ${level}!`);
     }
+    updateHud();
   }
 
   // 스폰
@@ -388,7 +407,7 @@ function update(dt) {
         invincibleFrames = HIT_INVINCIBLE_FRAMES;
         updateHud();
         if (lives <= 0) {
-          endGame(false);
+          endGame();
           return;
         }
         continue;
@@ -549,17 +568,15 @@ function startGame() {
   rafId = requestAnimationFrame(loop);
 }
 
-function endGame(finished) {
+function endGame() {
   running = false;
   cancelAnimationFrame(rafId);
   hud.classList.add("hidden");
   controls.classList.add("hidden");
   gameoverHitImg.src = selectedCharacter.hitSrc || selectedCharacter.src;
   gameoverHitImg.classList.remove("hidden");
-  gameoverTitleEl.textContent = finished ? "🎉 골인! 🎉" : "게임 오버!";
-  finalScoreEl.textContent = finished
-    ? `점수: ${score} (100m 완주!)`
-    : `점수: ${score} (${distanceM}m 도달)`;
+  gameoverTitleEl.textContent = "게임 오버!";
+  finalScoreEl.textContent = `점수: ${score} (레벨 ${level} · ${distanceM}m 도달)`;
   const rankInfo = saveScoreAndGetRank(score);
   renderRanking(rankInfo);
   gameoverScreen.classList.remove("hidden");

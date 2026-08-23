@@ -136,6 +136,10 @@ body {
   font-size: 14px;
   opacity: 0.75;
   min-height: 18px;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #dots {
