@@ -92,10 +92,10 @@ juchae-game-app/
     │   ├── style.css
     │   ├── game.js
     │   └── assets/
-    │       ├── character_girl.png
-    │       ├── character_girl_hit.png
-    │       ├── character_magpie.png
-    │       ├── character_magpie_hit.png
+    │       ├── character_girl.png (+ character_girl_hit.png)
+    │       ├── character_magpie.png (+ character_magpie_hit.png)
+    │       ├── character_purple.png / character_panda.png / character_cotton.png
+    │       ├── character_dog.png / character_tiger.png / character_dragon.png
     │       ├── poop.png
     │       └── poop_big.png
     └── 0002-juchaerun/        🏃 쭈채런
@@ -130,14 +130,15 @@ const GAMES = [
 
 1. 캐릭터 그림을 **배경이 지워진 투명 PNG**로 만들어 `games/0001-ddong-pihagi/assets/` 폴더에 넣습니다.
    (배경 제거가 필요하면 **초록색 단색 배경**으로 그린 그림을 주는 것이 가장 깔끔합니다)
-2. `games/0001-ddong-pihagi/game.js` 위쪽의 `CHARACTERS` 목록에 한 줄 추가합니다.
+2. `games/0001-ddong-pihagi/game.js` 위쪽의 `CHARACTERS` 목록에 한 줄 추가합니다. `no`는 캐릭터 번호로, 현재 01~08번까지 쓰고 있으니 새 캐릭터는 09번부터 이어서 붙입니다. `hitSrc`(게임오버 때 보이는 맞은 모습)는 없으면 생략해도 되고, 그러면 평소 모습 그림이 대신 쓰입니다.
 
 ```js
 const CHARACTERS = [
-  { id: "girl",   name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png" },
-  { id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png", hitSrc: "assets/character_magpie_hit.png" },
-  { id: "new",    name: "새 캐릭터",   src: "assets/character_new.png", hitSrc: "assets/character_new_hit.png" },  // 추가
+  { no: "01", id: "girl",   name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png" },
+  // ...
+  { no: "08", id: "dragon", name: "드래곤", src: "assets/character_dragon.png" },
+  { no: "09", id: "new",    name: "새 캐릭터", src: "assets/character_new.png" },  // 추가
 ];
 ```
 
-선택 화면에 자동으로 나타납니다.
+선택 화면에 번호와 함께 자동으로 나타납니다.

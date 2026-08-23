@@ -28,9 +28,16 @@ const levelupToast = document.getElementById("levelup-toast");
 const RANKING_KEY = "ddongpihagi-rankings";
 
 // ---------- 캐릭터 목록 ----------
+// no: 캐릭터 번호(01~08). 새 캐릭터를 추가할 때는 09부터 이어서 붙입니다.
 const CHARACTERS = [
-  { id: "girl", name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png" },
-  { id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png", hitSrc: "assets/character_magpie_hit.png" },
+  { no: "01", id: "girl", name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png" },
+  { no: "02", id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png", hitSrc: "assets/character_magpie_hit.png" },
+  { no: "03", id: "purple", name: "보라 캐릭터", src: "assets/character_purple.png" },
+  { no: "04", id: "panda", name: "닌자 판다", src: "assets/character_panda.png" },
+  { no: "05", id: "cotton", name: "솜사탕 곰", src: "assets/character_cotton.png" },
+  { no: "06", id: "dog", name: "강아지", src: "assets/character_dog.png" },
+  { no: "07", id: "tiger", name: "한복 호랑이", src: "assets/character_tiger.png" },
+  { no: "08", id: "dragon", name: "드래곤", src: "assets/character_dragon.png" },
 ];
 
 function loadImage(src) {
@@ -55,11 +62,15 @@ function buildCharacterSelect() {
   CHARACTERS.forEach((c) => {
     const card = document.createElement("div");
     card.className = "character-card";
+    const no = document.createElement("div");
+    no.className = "no";
+    no.textContent = c.no;
     const img = document.createElement("img");
     img.src = c.src;
     const name = document.createElement("div");
     name.className = "name";
     name.textContent = c.name;
+    card.appendChild(no);
     card.appendChild(img);
     card.appendChild(name);
     card.addEventListener("click", () => {
@@ -583,7 +594,7 @@ function endGame() {
   running = false;
   cancelAnimationFrame(rafId);
   hud.classList.add("hidden");
-  gameoverHitImg.src = selectedCharacter.hitSrc;
+  gameoverHitImg.src = selectedCharacter.hitSrc || selectedCharacter.src;
   gameoverHitImg.classList.remove("hidden");
   finalScoreEl.textContent = `점수: ${score} (도달 레벨: ${level})`;
   const rankInfo = saveScoreAndGetRank(score);
