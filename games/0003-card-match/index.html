@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>기억력 게임</title>
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <div id="game-container">
+    <div id="hud" class="hidden">
+      <div id="hud-left">
+        <div id="score">점수: 0</div>
+        <div id="level">레벨: 1</div>
+      </div>
+      <div id="hud-mid">
+        <div id="timer">00:00</div>
+        <div id="mistakes">실수: 0/20</div>
+      </div>
+      <button id="pauseBtn" aria-label="일시정지">⏸</button>
+    </div>
+
+    <div id="board"></div>
+
+    <div id="start-screen" class="overlay">
+      <a id="homeLink" href="../../index.html">← 허브로</a>
+      <h1>🧠 기억력 게임 🧠</h1>
+      <p>카드를 뒤집어 같은 캐릭터 짝을 맞추세요!</p>
+      <button id="startBtn">시작하기</button>
+      <p class="hint">
+        레벨 1은 4장, 레벨이 오를 때마다 4장씩 늘어납니다 · 짝을 맞출 때마다 +10점<br>
+        틀려도 감점은 없지만, 레벨당 20번 틀리면 게임 종료 · 64장을 모두 맞히면 클리어!
+      </p>
+    </div>
+
+    <div id="pause-screen" class="overlay hidden">
+      <h1>일시정지</h1>
+      <button id="pauseContinueBtn">계속</button>
+      <button id="pauseRestartBtn">재시작</button>
+      <button id="pauseHomeBtn">허브로 나가기</button>
+    </div>
+
+    <div id="result-screen" class="overlay hidden">
+      <h1 id="resultTitle">게임 오버!</h1>
+      <p id="resultDetail">점수: 0</p>
+      <p id="rankMessage"></p>
+      <div id="rankingList"></div>
+      <button id="restartBtn">다시 하기</button>
+      <a id="homeLink2" href="../../index.html">← 허브로</a>
+    </div>
+
+    <div id="levelup-toast" class="hidden"></div>
+  </div>
+
+  <script src="game.js?v=1"></script>
+</body>
+</html>

@@ -29,15 +29,18 @@ const RANKING_KEY = "ddongpihagi-rankings";
 
 // ---------- 캐릭터 목록 ----------
 // no: 캐릭터 번호(01~08). 새 캐릭터를 추가할 때는 09부터 이어서 붙입니다.
+// 03~08번(보라/판다/솜사탕곰/강아지/호랑이/드래곤)은 0003 기억력 게임의
+// 64종 카드 풀에서 쓰이는 캐릭터라, 여기 선택 화면에는 selectable: false로
+// 표시해 감춰두고 01·02번만 고를 수 있게 합니다.
 const CHARACTERS = [
   { no: "01", id: "girl", name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png" },
   { no: "02", id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png", hitSrc: "assets/character_magpie_hit.png" },
-  { no: "03", id: "purple", name: "보라 캐릭터", src: "assets/character_purple.png" },
-  { no: "04", id: "panda", name: "닌자 판다", src: "assets/character_panda.png" },
-  { no: "05", id: "cotton", name: "솜사탕 곰", src: "assets/character_cotton.png" },
-  { no: "06", id: "dog", name: "강아지", src: "assets/character_dog.png" },
-  { no: "07", id: "tiger", name: "한복 호랑이", src: "assets/character_tiger.png" },
-  { no: "08", id: "dragon", name: "드래곤", src: "assets/character_dragon.png" },
+  { no: "03", id: "purple", name: "보라 캐릭터", src: "assets/character_purple.png", selectable: false },
+  { no: "04", id: "panda", name: "닌자 판다", src: "assets/character_panda.png", selectable: false },
+  { no: "05", id: "cotton", name: "솜사탕 곰", src: "assets/character_cotton.png", selectable: false },
+  { no: "06", id: "dog", name: "강아지", src: "assets/character_dog.png", selectable: false },
+  { no: "07", id: "tiger", name: "한복 호랑이", src: "assets/character_tiger.png", selectable: false },
+  { no: "08", id: "dragon", name: "드래곤", src: "assets/character_dragon.png", selectable: false },
 ];
 
 function loadImage(src) {
@@ -50,16 +53,17 @@ function loadImage(src) {
   return img;
 }
 
-CHARACTERS.forEach((c) => { c.img = loadImage(c.src); });
+const SELECTABLE_CHARACTERS = CHARACTERS.filter((c) => c.selectable !== false);
+SELECTABLE_CHARACTERS.forEach((c) => { c.img = loadImage(c.src); });
 const poopImg = loadImage("assets/poop.png");
 const poopBigImg = loadImage("assets/poop_big.png");
 
 // ---------- 캐릭터 선택 화면 구성 ----------
-let selectedCharacter = CHARACTERS[0];
+let selectedCharacter = SELECTABLE_CHARACTERS[0];
 
 function buildCharacterSelect() {
   characterListEl.innerHTML = "";
-  CHARACTERS.forEach((c) => {
+  SELECTABLE_CHARACTERS.forEach((c) => {
     const card = document.createElement("div");
     card.className = "character-card";
     const no = document.createElement("div");

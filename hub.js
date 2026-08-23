@@ -18,6 +18,14 @@ const GAMES = [
     ready: true,
   },
   {
+    id: "0003",
+    title: "기억력 게임",
+    desc: "카드를 뒤집어 짝을 맞춰라!",
+    path: "games/0003-card-match/index.html",
+    thumb: "games/0003-card-match/assets/thumb.png",
+    ready: true,
+  },
+  {
     id: "TBD",
     title: "다음 게임 준비중",
     desc: "",
