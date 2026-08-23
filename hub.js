@@ -6,7 +6,7 @@ const GAMES = [
     title: "똥피하기",
     desc: "떨어지는 똥을 피해라!",
     path: "games/0001-ddong-pihagi/index.html",
-    thumb: "games/0001-ddong-pihagi/assets/character_girl.png",
+    thumb: "games/0001-ddong-pihagi/assets/thumb.png",
     ready: true,
   },
   {
@@ -14,7 +14,7 @@ const GAMES = [
     title: "쭈채런",
     desc: "장애물을 뛰어넘어라!",
     path: "games/0002-juchaerun/index.html",
-    emoji: "🏃",
+    thumb: "games/0002-juchaerun/assets/thumb.png",
     ready: true,
   },
   {
