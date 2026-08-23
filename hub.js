@@ -75,14 +75,12 @@ function render() {
   startBtn.disabled = !game.ready;
   startBtn.textContent = game.ready ? "시작하기" : "준비중";
 
-  prevBtn.disabled = index === 0;
-  nextBtn.disabled = index === GAMES.length - 1;
-
   dotEls.forEach((d, i) => d.classList.toggle("active", i === index));
 }
 
+// 끝에서 끝으로도 막힘없이 순환합니다(0001 이전 → TBD, TBD 다음 → 0001).
 function goTo(i) {
-  index = Math.max(0, Math.min(GAMES.length - 1, i));
+  index = ((i % GAMES.length) + GAMES.length) % GAMES.length;
   render();
 }
 

@@ -129,9 +129,9 @@ function resize() {
   width = vp.w;
   height = vp.h;
 
-  // 조작 띠: 화면의 20% 정도, 너무 얇거나 두껍지 않게. 하단 안전 영역만큼
-  // 더 확보해서 조작 띠가 제스처 바에 가려지지 않게 합니다.
-  controlHeight = Math.max(110, Math.min(190, Math.round(height * 0.2))) + getSafeAreaBottom();
+  // 조작 띠: 화면의 16% 정도, 너무 얇거나 두껍지 않게(쭈채런과 동일한 비율).
+  // 하단 안전 영역만큼 더 확보해서 조작 띠가 제스처 바에 가려지지 않게 합니다.
+  controlHeight = Math.max(100, Math.min(160, Math.round(height * 0.16))) + getSafeAreaBottom();
   playHeight = height - controlHeight;
 
   const dpr = window.devicePixelRatio || 1;

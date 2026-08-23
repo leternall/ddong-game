@@ -76,8 +76,11 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  min-height: 380px;
+  /* min이 아니라 고정 height — 슬라이드마다 제목/설명 길이가 달라도
+     대표 이미지와 그 아래 점·버튼이 항상 같은 위치에 오도록 합니다. */
+  height: 380px;
   justify-content: center;
+  overflow: hidden;
 }
 
 #slide.not-ready {
