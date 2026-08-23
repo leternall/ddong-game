@@ -12,7 +12,7 @@ const GAMES = [
   {
     id: "0002",
     title: "쭈채런",
-    desc: "장애물을 뛰어넘어라!",
+    desc: "세 줄을 오가며 100m를 달려라!",
     path: "games/0002-juchaerun/index.html",
     thumb: "games/0002-juchaerun/assets/thumb.png",
     ready: true,

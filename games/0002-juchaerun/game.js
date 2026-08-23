@@ -1,22 +1,29 @@
-// ===== 쭈채런 게임 =====
+// ===== 쭈채런: 3줄 달리기 게임 =====
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 const hud = document.getElementById("hud");
 const scoreEl = document.getElementById("score");
-const levelEl = document.getElementById("level");
-const pauseBtn = document.getElementById("pauseBtn");
+const distanceEl = document.getElementById("distance");
+const livesEl = document.getElementById("lives");
 
-const startScreen = document.getElementById("start-screen");
-const startBtn = document.getElementById("startBtn");
+const controls = document.getElementById("controls");
+const leftBtn = document.getElementById("leftBtn");
+const jumpBtn = document.getElementById("jumpBtn");
+const rightBtn = document.getElementById("rightBtn");
+
+const selectScreen = document.getElementById("select-screen");
+const characterListEl = document.getElementById("character-list");
 
 const pauseScreen = document.getElementById("pause-screen");
 const pauseContinueBtn = document.getElementById("pauseContinueBtn");
 const pauseRestartBtn = document.getElementById("pauseRestartBtn");
-const pauseHomeBtn = document.getElementById("pauseHomeBtn");
+const pauseSelectBtn = document.getElementById("pauseSelectBtn");
 
 const gameoverScreen = document.getElementById("gameover-screen");
+const gameoverHitImg = document.getElementById("gameoverHitImg");
+const gameoverTitleEl = document.getElementById("gameoverTitle");
 const finalScoreEl = document.getElementById("finalScore");
 const rankMessageEl = document.getElementById("rankMessage");
 const rankingListEl = document.getElementById("rankingList");
@@ -24,17 +31,73 @@ const restartBtn = document.getElementById("restartBtn");
 
 const levelupToast = document.getElementById("levelup-toast");
 
-const RANKING_KEY = "juchaerun-rankings";
+// 게임 방식이 완전히 바뀌어서(점프 러너 → 3줄 달리기) 예전 점수와 섞이지
+// 않도록 랭킹 저장 키를 새로 둡니다.
+const RANKING_KEY = "juchaerun-lanes-rankings";
+
+// ---------- 캐릭터 목록 ----------
+// 똥피하기(0001)의 03·05번 캐릭터 그림을 그대로 재사용합니다(에셋 중복 없음).
+const CHARACTERS = [
+  { id: "purple", name: "보라 캐릭터", src: "../0001-ddong-pihagi/assets/character_purple.png" },
+  { id: "cotton", name: "솜사탕 곰", src: "../0001-ddong-pihagi/assets/character_cotton.png" },
+];
+
+function loadImage(src) {
+  const img = new Image();
+  img.loaded = false;
+  img.failed = false;
+  img.onload = () => { img.loaded = true; };
+  img.onerror = () => { img.failed = true; };
+  img.src = src;
+  return img;
+}
+
+CHARACTERS.forEach((c) => { c.img = loadImage(c.src); });
+
+// ---------- 캐릭터 선택 화면 구성 ----------
+let selectedCharacter = CHARACTERS[0];
+
+function buildCharacterSelect() {
+  characterListEl.innerHTML = "";
+  CHARACTERS.forEach((c) => {
+    const card = document.createElement("div");
+    card.className = "character-card";
+    const img = document.createElement("img");
+    img.src = c.src;
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = c.name;
+    card.appendChild(img);
+    card.appendChild(name);
+    card.addEventListener("click", () => {
+      selectedCharacter = c;
+      startGame();
+    });
+    characterListEl.appendChild(card);
+  });
+}
+buildCharacterSelect();
 
 // ---------- 캔버스 크기 ----------
-let width, height, groundY;
-let player, obstacles, distance, score, level, levelFrames, spawnTimer, spawnInterval;
-let running, paused = false;
+let width, height;
+let playHeight;
+let controlHeight;
+
+let player, entities, score, lives, distanceM, distancePx;
+let meatEaten;
+let spawnTimer, spawnInterval;
+let invincibleFrames, running, paused;
+
+function laneX(lane) {
+  return (width / LANE_COUNT) * (lane + 0.5);
+}
 
 function resize() {
   width = window.innerWidth;
   height = window.innerHeight;
-  groundY = height - GROUND_MARGIN;
+
+  controlHeight = Math.max(100, Math.min(160, Math.round(height * 0.16)));
+  playHeight = height - controlHeight;
 
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(width * dpr);
@@ -46,57 +109,79 @@ function resize() {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
+  controls.style.height = controlHeight + "px";
+
   if (player) {
-    player.x = width * 0.15;
-    if (player.onGround) player.y = groundY - player.h;
+    player.y = playHeight - player.h / 2 - 10;
+    player.x = laneX(player.lane);
   }
 }
+window.addEventListener("resize", resize);
 
 // ---------- 게임 상수 ----------
-const PLAYER_W = 50;
-const PLAYER_H = 60;
-const GROUND_MARGIN = 60;
-const GRAVITY = 0.9;
-const JUMP_VELOCITY = -15;
-const LEVEL_DURATION_FRAMES = 20 * 60; // 20초 (60fps 기준)
+const PLAYER_SIZE = 70;
+const LANE_COUNT = 3;
+const LANE_MOVE_SPEED = 40; // px / 프레임(60fps 기준)
+const MAX_LIVES = 3;
+const HIT_INVINCIBLE_FRAMES = 75;
+const JUMP_DURATION_FRAMES = 42;
+const JUMP_HEIGHT = 46;
+const PAUSE_ZONE_MARGIN = 30;
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 
-window.addEventListener("resize", resize);
+const GOAL_METERS = 100;
+const METER_SCORE = 5;
+const MEAT_SCORE = 10;
+const MEAT_PER_LIFE = 50;
+const PX_PER_METER = 60;
+const BASE_SPEED = 4;
+const SPEED_GROWTH_PER_METER = 0.035;
+const MAX_SPEED = 13;
+const COLLIDE_BAND = 26;
+
 resize();
 
-function currentRunSpeed() {
-  return 6 + (level - 1) * 0.8;
+function currentSpeed() {
+  return Math.min(MAX_SPEED, BASE_SPEED + distanceM * SPEED_GROWTH_PER_METER);
 }
 
 function currentSpawnInterval() {
-  return Math.max(45, 110 - (level - 1) * 6);
+  return Math.max(30, 62 - distanceM * 0.3);
 }
 
 function resetGame() {
   player = {
-    x: width * 0.15,
-    y: groundY - PLAYER_H,
-    w: PLAYER_W,
-    h: PLAYER_H,
-    vy: 0,
-    onGround: true,
+    lane: 1,
+    x: laneX(1),
+    y: playHeight - PLAYER_SIZE / 2 - 10,
+    w: PLAYER_SIZE,
+    h: PLAYER_SIZE,
+    jumpFrames: 0,
   };
-  obstacles = [];
-  distance = 0;
+  entities = [];
   score = 0;
-  level = 1;
-  levelFrames = 0;
+  lives = MAX_LIVES;
+  distanceM = 0;
+  distancePx = 0;
+  meatEaten = 0;
   spawnTimer = 0;
   spawnInterval = currentSpawnInterval();
+  invincibleFrames = 0;
   paused = false;
   pauseScreen.classList.add("hidden");
-  pauseBtn.classList.remove("hidden");
   updateHud();
 }
 
 function updateHud() {
   scoreEl.textContent = `점수: ${score}`;
-  levelEl.textContent = `레벨: ${level}`;
+  distanceEl.textContent = `거리: ${distanceM}m / ${GOAL_METERS}m`;
+  livesEl.innerHTML = "";
+  for (let i = 0; i < MAX_LIVES; i++) {
+    const span = document.createElement("span");
+    span.textContent = "❤️";
+    if (i >= lives) span.classList.add("empty");
+    livesEl.appendChild(span);
+  }
 }
 
 function showLevelUpToast(text) {
@@ -110,33 +195,17 @@ function showLevelUpToast(text) {
   }, 1200);
 }
 
-// ---------- 점프 입력 ----------
-function jump() {
-  if (!running || paused) return;
-  if (player.onGround) {
-    player.vy = JUMP_VELOCITY;
-    player.onGround = false;
-  }
+// ---------- 일시정지 (0001과 동일한 방식) ----------
+function pointerToCanvasY(clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return clientY - rect.top;
 }
 
-canvas.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  jump();
-}, { passive: false });
+function isInPauseZone(clientY) {
+  if (!player) return false;
+  return pointerToCanvasY(clientY) < player.y - player.h / 2 - PAUSE_ZONE_MARGIN;
+}
 
-canvas.addEventListener("mousedown", () => {
-  jump();
-});
-
-window.addEventListener("keydown", (e) => {
-  if (e.key === " " || e.code === "Space" || e.key === "ArrowUp" || e.key === "Up") {
-    e.preventDefault();
-    if (e.repeat) return;
-    jump();
-  }
-});
-
-// ---------- 일시정지 ----------
 let pauseUnlockTimer = null;
 
 function togglePause() {
@@ -145,7 +214,6 @@ function togglePause() {
   clearTimeout(pauseUnlockTimer);
   if (paused) {
     cancelAnimationFrame(rafId);
-    pauseBtn.classList.add("hidden");
     pauseScreen.classList.remove("hidden");
     pauseScreen.classList.add("locked");
     pauseUnlockTimer = setTimeout(() => {
@@ -154,129 +222,221 @@ function togglePause() {
   } else {
     pauseScreen.classList.remove("locked");
     pauseScreen.classList.add("hidden");
-    pauseBtn.classList.remove("hidden");
     lastTimestamp = null;
     rafId = requestAnimationFrame(loop);
   }
 }
 
-pauseBtn.addEventListener("click", togglePause);
-pauseContinueBtn.addEventListener("click", togglePause);
-pauseRestartBtn.addEventListener("click", () => {
-  startGame();
-});
-pauseHomeBtn.addEventListener("click", () => {
-  location.href = "../../index.html";
+canvas.addEventListener("touchstart", (e) => {
+  if (!running || paused) return;
+  if (isInPauseZone(e.touches[0].clientY)) togglePause();
+}, { passive: true });
+
+canvas.addEventListener("mousedown", (e) => {
+  if (!running || paused) return;
+  if (isInPauseZone(e.clientY)) togglePause();
 });
 
-// ---------- 장애물 ----------
-function spawnObstacle() {
-  const h = 30 + Math.random() * 30;
-  const w = 22 + Math.random() * 18;
-  obstacles.push({ x: width, y: groundY - h, w, h });
+// ---------- 조작(좌우 이동 / 점프) ----------
+function moveLeft() {
+  if (!running || paused) return;
+  player.lane = Math.max(0, player.lane - 1);
+}
+function moveRight() {
+  if (!running || paused) return;
+  player.lane = Math.min(LANE_COUNT - 1, player.lane + 1);
+}
+function jump() {
+  if (!running || paused) return;
+  if (player.jumpFrames > 0) return;
+  player.jumpFrames = JUMP_DURATION_FRAMES;
 }
 
-function isColliding(p, o) {
-  const px = p.x + p.w * 0.22;
-  const py = p.y + p.h * 0.15;
-  const pw = p.w * 0.56;
-  const ph = p.h * 0.8;
-  return px < o.x + o.w && px + pw > o.x && py < o.y + o.h && py + ph > o.y;
+leftBtn.addEventListener("click", moveLeft);
+rightBtn.addEventListener("click", moveRight);
+jumpBtn.addEventListener("click", jump);
+
+window.addEventListener("keydown", (e) => {
+  if (e.repeat) return;
+  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") moveLeft();
+  if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") moveRight();
+  if (e.key === "ArrowUp" || e.key === " " || e.key === "w" || e.key === "W") jump();
+});
+
+// ---------- 장애물/먹이 스폰 ----------
+function spawnWave() {
+  const lanes = [0, 1, 2];
+  // 최소 한 줄은 항상 비워둬서 반드시 피할 길이 있게 합니다.
+  const r = Math.random();
+  const obstacleCount = r < 0.2 ? 0 : r < 0.75 ? 1 : 2;
+
+  const shuffled = lanes.slice().sort(() => Math.random() - 0.5);
+  const obstacleLanes = shuffled.slice(0, obstacleCount);
+  const freeLanes = shuffled.slice(obstacleCount);
+
+  const size = Math.min(width / LANE_COUNT * 0.7, 64);
+
+  obstacleLanes.forEach((lane) => {
+    const type = Math.random() < 0.4 ? "pit" : (Math.random() < 0.5 ? "tree" : "rock");
+    entities.push({ type, lane, x: laneX(lane), y: -size / 2, size });
+  });
+
+  freeLanes.forEach((lane) => {
+    if (Math.random() < 0.35) {
+      entities.push({ type: "meat", lane, x: laneX(lane), y: -size / 2, size: size * 0.7 });
+    }
+  });
 }
 
 // ---------- 업데이트 ----------
-// dt: 이번 프레임이 "60fps 기준 몇 프레임 치"의 시간이었는지 (1 = 정확히 1/60초).
 function update(dt) {
-  player.vy += GRAVITY * dt;
-  player.y += player.vy * dt;
-  if (player.y >= groundY - player.h) {
-    player.y = groundY - player.h;
-    player.vy = 0;
-    player.onGround = true;
-  }
+  // 레인 이동(부드럽게 목표 레인 중심으로)
+  const targetX = laneX(player.lane);
+  const moveStep = LANE_MOVE_SPEED * dt;
+  const diff = targetX - player.x;
+  player.x += Math.max(-moveStep, Math.min(moveStep, diff));
 
-  const speed = currentRunSpeed();
-  distance += speed * dt;
-  const newScore = Math.floor(distance / 8);
-  if (newScore !== score) {
-    score = newScore;
+  if (player.jumpFrames > 0) player.jumpFrames = Math.max(0, player.jumpFrames - dt);
+  if (invincibleFrames > 0) invincibleFrames = Math.max(0, invincibleFrames - dt);
+
+  // 거리 진행
+  const speed = currentSpeed();
+  distancePx += speed * dt;
+  const newDistanceM = Math.min(GOAL_METERS, Math.floor(distancePx / PX_PER_METER));
+  if (newDistanceM > distanceM) {
+    score += (newDistanceM - distanceM) * METER_SCORE;
+    distanceM = newDistanceM;
     updateHud();
+    if (distanceM >= GOAL_METERS) {
+      endGame(true);
+      return;
+    }
   }
 
-  levelFrames += dt;
-  if (levelFrames >= LEVEL_DURATION_FRAMES) {
-    levelFrames = 0;
-    level++;
-    spawnInterval = currentSpawnInterval();
-    showLevelUpToast(`레벨 ${level}!`);
-    updateHud();
-  }
-
+  // 스폰
   spawnTimer += dt;
   if (spawnTimer >= spawnInterval) {
     spawnTimer = 0;
-    spawnObstacle();
+    spawnInterval = currentSpawnInterval();
+    spawnWave();
   }
 
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const o = obstacles[i];
-    o.x -= speed * dt;
+  // 장애물/먹이 이동 + 충돌
+  for (let i = entities.length - 1; i >= 0; i--) {
+    const e = entities[i];
+    e.y += speed * dt;
 
-    if (isColliding(player, o)) {
-      endGame();
-      return;
+    const sameLane = e.lane === player.lane;
+    const nearRow = Math.abs(e.y - player.y) < COLLIDE_BAND;
+
+    if (sameLane && nearRow) {
+      if (e.type === "meat") {
+        entities.splice(i, 1);
+        meatEaten++;
+        score += MEAT_SCORE;
+        if (meatEaten % MEAT_PER_LIFE === 0) {
+          const healed = lives < MAX_LIVES;
+          lives = Math.min(MAX_LIVES, lives + 1);
+          if (healed) showLevelUpToast(`고기 ${meatEaten}개! 목숨 +1 ❤️`);
+        }
+        updateHud();
+        continue;
+      }
+
+      const avoided = e.type === "pit" && player.jumpFrames > 0;
+      if (!avoided) {
+        if (invincibleFrames > 0) {
+          // 무적 중에는 목숨이 안 깎입니다. 닿은 장애물은 그 자리에서 지워서
+          // 무적이 풀리자마자 같은 장애물에 다시 맞는 것을 막습니다.
+          entities.splice(i, 1);
+          continue;
+        }
+        entities.splice(i, 1);
+        lives--;
+        invincibleFrames = HIT_INVINCIBLE_FRAMES;
+        updateHud();
+        if (lives <= 0) {
+          endGame(false);
+          return;
+        }
+        continue;
+      }
     }
 
-    if (o.x + o.w < 0) obstacles.splice(i, 1);
+    if (e.y - e.size / 2 > height) {
+      entities.splice(i, 1);
+    }
   }
 }
 
 // ---------- 그리기 ----------
-function drawGround() {
-  ctx.fillStyle = "#5d4037";
-  ctx.fillRect(0, groundY, width, height - groundY);
-  ctx.fillStyle = "rgba(255,255,255,0.25)";
-  ctx.fillRect(0, groundY, width, 3);
-}
-
 function drawPlayer() {
-  const p = player;
-  ctx.save();
-  ctx.translate(p.x, p.y);
+  const img = selectedCharacter.img;
+  const flashHidden = invincibleFrames > 0 && Math.floor(invincibleFrames / 6) % 2 === 0;
+  if (flashHidden) return;
 
-  ctx.fillStyle = "#42a5f5";
-  ctx.fillRect(p.w * 0.1, p.h * 0.15, p.w * 0.8, p.h * 0.5);
+  const jumpOffset = player.jumpFrames > 0
+    ? Math.sin((1 - player.jumpFrames / JUMP_DURATION_FRAMES) * Math.PI) * JUMP_HEIGHT
+    : 0;
+  const cy = player.y - jumpOffset;
 
-  ctx.beginPath();
-  ctx.arc(p.w / 2, p.h * 0.12, p.w * 0.22, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffcc80";
-  ctx.fill();
-
-  const cycle = Math.sin(distance * 0.25);
-  const legH = p.h * 0.35;
-  ctx.fillStyle = "#1565c0";
-  if (p.onGround) {
-    ctx.fillRect(p.w * 0.18, p.h * 0.65, p.w * 0.22, legH + cycle * 6);
-    ctx.fillRect(p.w * 0.6, p.h * 0.65, p.w * 0.22, legH - cycle * 6);
+  if (img.loaded) {
+    const ratio = img.naturalWidth / img.naturalHeight;
+    let dw = player.w, dh = player.h;
+    if (ratio > 1) dh = dw / ratio; else dw = dh * ratio;
+    ctx.drawImage(img, player.x - dw / 2, cy - dh / 2, dw, dh);
   } else {
-    ctx.fillRect(p.w * 0.18, p.h * 0.65, p.w * 0.22, legH * 0.7);
-    ctx.fillRect(p.w * 0.6, p.h * 0.65, p.w * 0.22, legH * 0.7);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(player.x, cy, player.w / 2, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffd54f";
+    ctx.fill();
+    ctx.strokeStyle = "#f57f17";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
   }
 
-  ctx.restore();
+  // 점프 중 그림자(구덩이 위로 뛰어넘는 느낌을 주기 위해)
+  if (player.jumpFrames > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.ellipse(player.x, player.y + player.h * 0.4, player.w * 0.32, player.w * 0.12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
-function drawObstacle(o) {
-  ctx.fillStyle = "#2e7d32";
-  ctx.fillRect(o.x, o.y, o.w, o.h);
-  ctx.fillStyle = "#43a047";
-  ctx.fillRect(o.x + o.w * 0.15, o.y, o.w * 0.25, o.h);
+const ENTITY_EMOJI = { pit: "🕳️", tree: "🌳", rock: "🪨", meat: "🍖" };
+
+function drawEntity(e) {
+  ctx.font = `${e.size}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(ENTITY_EMOJI[e.type], e.x, e.y);
+}
+
+function drawLaneGuides() {
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 10]);
+  for (let i = 1; i < LANE_COUNT; i++) {
+    const x = (width / LANE_COUNT) * i;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, playHeight);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function draw() {
   ctx.clearRect(0, 0, width, height);
-  drawGround();
-  obstacles.forEach(drawObstacle);
+  drawLaneGuides();
+  entities.forEach(drawEntity);
   drawPlayer();
 }
 
@@ -348,26 +508,50 @@ function renderRanking(rankInfo) {
 function startGame() {
   resetGame();
   running = true;
-  startScreen.classList.add("hidden");
+  selectScreen.classList.add("hidden");
   gameoverScreen.classList.add("hidden");
   hud.classList.remove("hidden");
+  controls.classList.remove("hidden");
   cancelAnimationFrame(rafId);
   lastTimestamp = null;
   rafId = requestAnimationFrame(loop);
 }
 
-function endGame() {
+function endGame(finished) {
   running = false;
   cancelAnimationFrame(rafId);
   hud.classList.add("hidden");
-  finalScoreEl.textContent = `점수: ${score} (도달 레벨: ${level})`;
+  controls.classList.add("hidden");
+  gameoverHitImg.src = selectedCharacter.hitSrc || selectedCharacter.src;
+  gameoverHitImg.classList.remove("hidden");
+  gameoverTitleEl.textContent = finished ? "🎉 골인! 🎉" : "게임 오버!";
+  finalScoreEl.textContent = finished
+    ? `점수: ${score} (100m 완주!)`
+    : `점수: ${score} (${distanceM}m 도달)`;
   const rankInfo = saveScoreAndGetRank(score);
   renderRanking(rankInfo);
   gameoverScreen.classList.remove("hidden");
 }
 
-startBtn.addEventListener("click", startGame);
 restartBtn.addEventListener("click", () => {
   gameoverScreen.classList.add("hidden");
-  startScreen.classList.remove("hidden");
+  selectScreen.classList.remove("hidden");
+});
+
+pauseContinueBtn.addEventListener("click", () => {
+  togglePause();
+});
+
+pauseRestartBtn.addEventListener("click", () => {
+  startGame();
+});
+
+pauseSelectBtn.addEventListener("click", () => {
+  running = false;
+  paused = false;
+  cancelAnimationFrame(rafId);
+  pauseScreen.classList.add("hidden");
+  hud.classList.add("hidden");
+  controls.classList.add("hidden");
+  selectScreen.classList.remove("hidden");
 });
