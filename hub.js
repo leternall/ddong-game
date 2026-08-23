@@ -14,7 +14,7 @@ const GAMES = [
     title: "쭈채Run",
     desc: "장애물 피해 끝까지 달려라!",
     path: "games/0002-juchaerun/index.html",
-    thumb: "games/0002-juchaerun/assets/thumb.png?v=5",
+    thumb: "games/0002-juchaerun/assets/thumb.png?v=6",
     ready: true,
   },
   {
