@@ -6,15 +6,15 @@ const GAMES = [
     title: "똥피하기",
     desc: "떨어지는 똥을 피해라!",
     path: "games/0001-ddong-pihagi/index.html",
-    thumb: "games/0001-ddong-pihagi/assets/thumb.png",
+    thumb: "games/0001-ddong-pihagi/assets/thumb.png?v=2",
     ready: true,
   },
   {
     id: "0002",
     title: "쭈채Run",
-    desc: "세 줄을 오가며 100m를 달려라!",
+    desc: "장애물 피해 끝까지 달려라!",
     path: "games/0002-juchaerun/index.html",
-    thumb: "games/0002-juchaerun/assets/thumb.png",
+    thumb: "games/0002-juchaerun/assets/thumb.png?v=3",
     ready: true,
   },
   {
@@ -22,7 +22,7 @@ const GAMES = [
     title: "기억력 게임",
     desc: "카드를 뒤집어 짝을 맞춰라!",
     path: "games/0003-card-match/index.html",
-    thumb: "games/0003-card-match/assets/thumb.png",
+    thumb: "games/0003-card-match/assets/thumb.png?v=2",
     ready: true,
   },
   {

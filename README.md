@@ -131,6 +131,8 @@ juchae-game-app/
 1. `games/000N-게임이름/` 폴더를 새로 만들고 그 안에서 완결된 게임(index.html, style.css, game.js)을 만듭니다.
    - 허브로 돌아가는 링크는 `../../index.html` 입니다.
 2. 루트 `hub.js`의 `GAMES` 배열에 한 항목을 추가합니다.
+   - `desc`는 허브 카드에서 **한 줄로만** 보이도록 12~14자 정도로 짧게 씁니다(길면 CSS에서 잘려 보입니다). 자세한 설명은 게임 안쪽 화면에 쓰면 됩니다.
+   - `thumb` 이미지는 캐시 문제로 안 바뀐 것처럼 보일 수 있으니, 대표 이미지를 다시 찍어 덮어쓸 때마다 `?v=N` 뒤 숫자를 하나씩 올려주세요.
 
 ```js
 const GAMES = [
@@ -140,7 +142,7 @@ const GAMES = [
     title: "새 게임",
     desc: "한 줄 설명",
     path: "games/0004-새게임/index.html",
-    thumb: "games/0004-새게임/assets/thumb.png", // 이미지가 없으면 emoji 사용
+    thumb: "games/0004-새게임/assets/thumb.png?v=1", // 이미지가 없으면 emoji 사용
     ready: true,
   },
 ];
