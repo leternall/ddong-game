@@ -77,8 +77,9 @@ body {
   align-items: center;
   gap: 8px;
   /* min이 아니라 고정 height — 슬라이드마다 제목/설명 길이가 달라도
-     대표 이미지와 그 아래 점·버튼이 항상 같은 위치에 오도록 합니다. */
-  height: 380px;
+     대표 이미지와 그 아래 점·버튼이 항상 같은 위치에 오도록 합니다.
+     내용(대표 이미지+글자)보다 넉넉하게 잡아 상하좌우 여백을 확보합니다. */
+  height: 420px;
   justify-content: center;
   overflow: hidden;
 }
@@ -96,7 +97,7 @@ body {
 }
 
 #thumbWrap {
-  width: 130px;
+  width: 108px;
   aspect-ratio: 390 / 844;
   border-radius: 16px;
   overflow: hidden;
