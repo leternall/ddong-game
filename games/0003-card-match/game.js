@@ -176,6 +176,13 @@ function relayoutBoard() {
 window.addEventListener("resize", () => {
   if (running) relayoutBoard();
 });
+// 인앱 브라우저의 자체 하단 툴바처럼 window resize 이벤트 없이 보이는
+// 영역만 바뀌는 경우까지 잡기 위해 visualViewport도 함께 감지합니다.
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    if (running) relayoutBoard();
+  });
+}
 
 // ---------- 카드 앞/뒷면 표시 ----------
 function setFaceContent(faceEl, showFront, card) {

@@ -114,9 +114,20 @@ function getSafeAreaBottom() {
   return value;
 }
 
+// 카카오톡 등 인앱 브라우저는 자체 하단 툴바를 얹으면서도
+// window.innerHeight를 그대로(툴바 포함) 보고하는 경우가 있어, 실제로
+// 보이는 영역을 더 정확히 아는 visualViewport를 우선 사용합니다.
+function getViewportSize() {
+  if (window.visualViewport) {
+    return { w: window.visualViewport.width, h: window.visualViewport.height };
+  }
+  return { w: window.innerWidth, h: window.innerHeight };
+}
+
 function resize() {
-  width = window.innerWidth;
-  height = window.innerHeight;
+  const vp = getViewportSize();
+  width = vp.w;
+  height = vp.h;
 
   // 조작 띠: 화면의 20% 정도, 너무 얇거나 두껍지 않게. 하단 안전 영역만큼
   // 더 확보해서 조작 띠가 제스처 바에 가려지지 않게 합니다.
@@ -141,6 +152,9 @@ function resize() {
   }
 }
 window.addEventListener("resize", resize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", resize);
+}
 resize();
 
 // ---------- 게임 상수 ----------
