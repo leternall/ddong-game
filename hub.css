@@ -1,0 +1,167 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #222;
+  font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+  touch-action: none;
+  color: #fff;
+}
+
+#hub-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 20px;
+  text-align: center;
+  background: linear-gradient(to bottom, #2b2b3a, #1a1a22);
+}
+
+#hub-title {
+  font-size: 24px;
+  opacity: 0.9;
+}
+
+#carousel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.nav-btn {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.nav-btn:active {
+  background: rgba(255,255,255,0.25);
+  transform: scale(0.94);
+}
+
+.nav-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+#slide {
+  flex: 1 1 auto;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,204,0,0.6);
+  border-radius: 20px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 260px;
+  justify-content: center;
+}
+
+#slide.not-ready {
+  border-color: rgba(255,255,255,0.2);
+  opacity: 0.6;
+}
+
+#slideNumber {
+  font-size: 15px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  font-weight: bold;
+}
+
+#thumbWrap {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#thumbImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+#thumbImg.hidden {
+  display: none;
+}
+
+#thumbFallback {
+  font-size: 64px;
+}
+
+#thumbFallback.hidden {
+  display: none;
+}
+
+#slideTitle {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+#slideDesc {
+  font-size: 14px;
+  opacity: 0.75;
+  min-height: 18px;
+}
+
+#dots {
+  display: flex;
+  gap: 8px;
+}
+
+#dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.25);
+}
+
+#dots .dot.active {
+  background: #ffcc00;
+}
+
+#startBtn {
+  padding: 14px 40px;
+  font-size: 20px;
+  font-weight: bold;
+  border: none;
+  border-radius: 999px;
+  background: #ffcc00;
+  color: #222;
+  cursor: pointer;
+}
+
+#startBtn:active {
+  transform: scale(0.96);
+}
+
+#startBtn:disabled {
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.4);
+  cursor: default;
+}
+
+.hint {
+  font-size: 12px;
+  opacity: 0.6;
+  max-width: 320px;
+}

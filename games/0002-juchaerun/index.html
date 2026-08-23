@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>쭈채런</title>
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="hud" class="hidden">
+      <div id="hud-left">
+        <div id="score">점수: 0</div>
+        <div id="level">레벨: 1</div>
+      </div>
+      <button id="pauseBtn" aria-label="일시정지">⏸</button>
+    </div>
+
+    <div id="start-screen" class="overlay">
+      <a id="homeLink" href="../../index.html">← 허브로</a>
+      <h1>🏃 쭈채런 🏃</h1>
+      <p>화면을 탭하거나 스페이스바를 눌러 점프해서 장애물을 넘으세요!</p>
+      <button id="startBtn">시작하기</button>
+      <p class="hint">PC: 스페이스바 / ↑ · 휴대폰: 화면 아무 곳이나 탭 · 장애물에 닿으면 게임 종료</p>
+    </div>
+
+    <div id="pause-screen" class="overlay hidden">
+      <h1>일시정지</h1>
+      <button id="pauseContinueBtn">계속</button>
+      <button id="pauseRestartBtn">재시작</button>
+      <button id="pauseHomeBtn">허브로 나가기</button>
+    </div>
+
+    <div id="gameover-screen" class="overlay hidden">
+      <h1>게임 오버!</h1>
+      <p id="finalScore">점수: 0</p>
+      <p id="rankMessage"></p>
+      <div id="rankingList"></div>
+      <button id="restartBtn">다시 하기</button>
+      <a id="homeLink2" href="../../index.html">← 허브로</a>
+    </div>
+
+    <div id="levelup-toast" class="hidden"></div>
+  </div>
+
+  <script src="game.js?v=1"></script>
+</body>
+</html>

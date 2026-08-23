@@ -4,47 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="robots" content="noindex, nofollow">
-<title>똥피하기</title>
-<link rel="stylesheet" href="style.css?v=7">
+<title>쭈채 게임 모음</title>
+<link rel="stylesheet" href="hub.css?v=1">
 </head>
 <body>
-  <div id="game-container">
-    <canvas id="gameCanvas"></canvas>
+  <div id="hub-container">
+    <h1 id="hub-title">🎮 쭈채 게임 모음</h1>
 
-    <div id="hud" class="hidden">
-      <div id="hud-left">
-        <div id="score">점수: 0</div>
-        <div id="level">레벨: 1</div>
+    <div id="carousel">
+      <button id="prevBtn" class="nav-btn" aria-label="이전 게임">◀</button>
+
+      <div id="slide">
+        <div id="slideNumber">0001</div>
+        <div id="thumbWrap">
+          <img id="thumbImg" class="hidden" alt="">
+          <div id="thumbFallback" class="hidden"></div>
+        </div>
+        <div id="slideTitle">똥피하기</div>
+        <div id="slideDesc"></div>
       </div>
-      <div id="lives"></div>
+
+      <button id="nextBtn" class="nav-btn" aria-label="다음 게임">▶</button>
     </div>
 
-    <div id="select-screen" class="overlay">
-      <h1>💩 똥피하기 💩</h1>
-      <p>캐릭터를 선택하세요</p>
-      <div id="character-list"></div>
-      <p class="hint">← → 방향키 또는 아래쪽 검은 띠에서 손가락을 좌우로 밀어 이동 · 똥을 3번 맞으면 게임 종료</p>
-    </div>
+    <div id="dots"></div>
 
-    <div id="pause-screen" class="overlay hidden">
-      <h1>일시정지</h1>
-      <button id="pauseContinueBtn">계속</button>
-      <button id="pauseRestartBtn">재시작</button>
-      <button id="pauseSelectBtn">캐릭터 다시 선택</button>
-    </div>
+    <button id="startBtn">시작하기</button>
 
-    <div id="gameover-screen" class="overlay hidden">
-      <img id="gameoverHitImg" class="hidden" alt="">
-      <h1>게임 오버!</h1>
-      <p id="finalScore">점수: 0</p>
-      <p id="rankMessage"></p>
-      <div id="rankingList"></div>
-      <button id="restartBtn">다시 하기</button>
-    </div>
-
-    <div id="levelup-toast" class="hidden"></div>
+    <p class="hint">← → 방향키 또는 화면을 좌우로 밀어서 게임을 고르세요</p>
   </div>
 
-  <script src="game.js?v=7"></script>
+  <script src="hub.js?v=1"></script>
 </body>
 </html>

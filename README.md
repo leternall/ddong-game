@@ -1,15 +1,17 @@
-# 💩 똥피하기
+# 🎮 쭈채 게임 모음
 
-아이들이 만든 캐릭터로 즐기는 2D 똥피하기 게임입니다.
+아이들이 만든 캐릭터로 즐기는 미니게임 모음집입니다. 첫 화면(허브)에서 게임을 고른 뒤 시작합니다.
 
 ## 🎮 바로 플레이
 
 **https://leternall.github.io/ddong-game/**
 
-휴대폰·태블릿·PC 어디서나 위 주소를 열면 바로 실행됩니다. 설치할 것 없습니다.
+휴대폰·태블릿·PC 어디서나 위 주소를 열면 허브 화면이 뜹니다. 설치할 것 없습니다.
 (검색엔진에는 노출되지 않도록 설정되어 있어, 주소를 아는 사람만 들어올 수 있습니다)
 
-## 게임 규칙
+← → 방향키(또는 화면을 좌우로 밀기)로 게임을 고르고 "시작하기"를 누르면 해당 게임이 시작됩니다.
+
+## 0001. 💩 똥피하기
 
 - 시작할 때 **소녀 캐릭터**와 **까치 캐릭터** 중 하나를 선택합니다.
 - 캐릭터를 좌우로 움직여 떨어지는 똥을 피하세요.
@@ -23,6 +25,18 @@
 - **5레벨을 깰 때마다 목숨이 1개 늘어납니다. 단 최대 3개까지만.**
   (이미 3개면 그대로 유지됩니다)
 - 목숨 3개를 모두 잃으면 게임이 끝나고, 그때의 점수가 **랭킹에 누적**되어 역대 등수가 표시됩니다.
+
+## 0002. 🏃 쭈채런
+
+- 화면을 탭하거나(휴대폰) 스페이스바/↑(PC)를 누르면 점프합니다.
+- 달려오는 장애물을 점프로 넘으세요. **하나라도 부딪히면 바로 게임 종료**입니다.
+- 시간이 지날수록(약 20초마다) 레벨이 오르며 속도가 빨라집니다.
+- 오래 살아남을수록 점수가 올라가고, 게임이 끝나면 그때의 점수가 **랭킹에 누적**되어 역대 등수가 표시됩니다.
+- 게임 중 오른쪽 위 ⏸ 버튼으로 일시정지할 수 있습니다.
+
+## TBD. 다음 게임
+
+다음에 추가할 게임 자리입니다. 허브 화면에서는 보이지만 아직 시작할 수 없습니다.
 
 ## 실행 방법
 
@@ -67,29 +81,62 @@ git push
 
 ```
 juchae-game-app/
-├── index.html          게임 화면 구조
-├── style.css           화면 디자인
-├── game.js             게임 로직
+├── index.html          허브(게임 선택) 화면 구조
+├── hub.css             허브 화면 디자인
+├── hub.js              허브 화면 로직 (게임 목록은 GAMES 배열)
 ├── robots.txt          검색엔진 색인 차단
 ├── 게임서버-시작.bat     휴대폰 접속용 서버 실행 (같은 Wi-Fi)
-└── assets/
-    ├── character_girl.png     플레이어 - 소녀 캐릭터
-    ├── character_magpie.png   플레이어 - 까치 캐릭터
-    ├── poop.png               일반 똥
-    └── poop_big.png           큰 똥 (5레벨마다 등장)
+└── games/
+    ├── 0001-ddong-pihagi/     💩 똥피하기
+    │   ├── index.html
+    │   ├── style.css
+    │   ├── game.js
+    │   └── assets/
+    │       ├── character_girl.png
+    │       ├── character_girl_hit.png
+    │       ├── character_magpie.png
+    │       ├── character_magpie_hit.png
+    │       ├── poop.png
+    │       └── poop_big.png
+    └── 0002-juchaerun/        🏃 쭈채런
+        ├── index.html
+        ├── style.css
+        └── game.js
 ```
 
-## 캐릭터 추가하기
+## 게임 추가하기
 
-1. 캐릭터 그림을 **배경이 지워진 투명 PNG**로 만들어 `assets/` 폴더에 넣습니다.
+1. `games/000N-게임이름/` 폴더를 새로 만들고 그 안에서 완결된 게임(index.html, style.css, game.js)을 만듭니다.
+   - 허브로 돌아가는 링크는 `../../index.html` 입니다.
+2. 루트 `hub.js`의 `GAMES` 배열에 한 항목을 추가합니다.
+
+```js
+const GAMES = [
+  // ...기존 게임들
+  {
+    id: "0003",
+    title: "새 게임",
+    desc: "한 줄 설명",
+    path: "games/0003-새게임/index.html",
+    thumb: "games/0003-새게임/assets/thumb.png", // 이미지가 없으면 emoji 사용
+    ready: true,
+  },
+];
+```
+
+허브 화면에 자동으로 나타납니다.
+
+## 캐릭터 추가하기 (똥피하기)
+
+1. 캐릭터 그림을 **배경이 지워진 투명 PNG**로 만들어 `games/0001-ddong-pihagi/assets/` 폴더에 넣습니다.
    (배경 제거가 필요하면 **초록색 단색 배경**으로 그린 그림을 주는 것이 가장 깔끔합니다)
-2. `game.js` 위쪽의 `CHARACTERS` 목록에 한 줄 추가합니다.
+2. `games/0001-ddong-pihagi/game.js` 위쪽의 `CHARACTERS` 목록에 한 줄 추가합니다.
 
 ```js
 const CHARACTERS = [
-  { id: "girl",   name: "소녀 캐릭터", src: "assets/character_girl.png" },
-  { id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png" },
-  { id: "new",    name: "새 캐릭터",   src: "assets/character_new.png" },  // 추가
+  { id: "girl",   name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png" },
+  { id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png", hitSrc: "assets/character_magpie_hit.png" },
+  { id: "new",    name: "새 캐릭터",   src: "assets/character_new.png", hitSrc: "assets/character_new_hit.png" },  // 추가
 ];
 ```
 
