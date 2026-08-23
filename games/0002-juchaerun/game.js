@@ -272,17 +272,35 @@ function togglePause() {
 }
 
 // ---------- 뒤로가기 = 일시정지 (0001과 동일한 방식) ----------
-let backTrapArmed = false;
-function armBackTrapIfNeeded() {
-  if (backTrapArmed) return;
+// history에 가짜 항목을 여러 개(BACK_TRAP_CUSHION) 미리 쌓아두고 뒤로가기로
+// 하나씩 소모될 때마다 다시 채워 넣습니다 — 매번 딱 1개씩만 재예치하면
+// 기기에 따라 뒤로가기를 연달아 빠르게 눌렀을 때 재예치가 따라가지 못해
+// 허브까지 밀려나가는 경우가 있어, 여유분을 넉넉히 둡니다.
+const BACK_TRAP_CUSHION = 4;
+let trapDepth = 0;
+
+function pushTrapEntry() {
   history.pushState({ ddongBackTrap: true }, "", location.href);
-  backTrapArmed = true;
+  trapDepth += 1;
 }
+
+function armBackTrap() {
+  if (trapDepth > 0) return;
+  for (let i = 0; i < BACK_TRAP_CUSHION; i++) pushTrapEntry();
+}
+
+function clearBackTrap() {
+  if (trapDepth <= 0) return;
+  const depth = trapDepth;
+  trapDepth = 0;
+  history.go(-depth);
+}
+
 window.addEventListener("popstate", () => {
-  backTrapArmed = false;
+  if (trapDepth > 0) trapDepth -= 1;
   if (running) {
     togglePause();
-    armBackTrapIfNeeded();
+    pushTrapEntry();
   }
 });
 
@@ -578,11 +596,12 @@ function startGame() {
   cancelAnimationFrame(rafId);
   lastTimestamp = null;
   rafId = requestAnimationFrame(loop);
-  armBackTrapIfNeeded();
+  armBackTrap();
 }
 
 function endGame() {
   running = false;
+  clearBackTrap();
   cancelAnimationFrame(rafId);
   hud.classList.add("hidden");
   controls.classList.add("hidden");
@@ -611,6 +630,7 @@ pauseRestartBtn.addEventListener("click", () => {
 pauseSelectBtn.addEventListener("click", () => {
   running = false;
   paused = false;
+  clearBackTrap();
   cancelAnimationFrame(rafId);
   pauseScreen.classList.add("hidden");
   hud.classList.add("hidden");

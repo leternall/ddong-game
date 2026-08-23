@@ -294,20 +294,38 @@ function togglePause() {
 // ---------- 뒤로가기 = 일시정지 ----------
 // 게임 중 실수로 브라우저/기기 뒤로가기를 누르면 허브로 튕겨나가는 대신
 // 일시정지로 취급합니다. 일시정지 중에 뒤로가기를 한 번 더 누르면 계속하기와
-// 같습니다. history에 가짜 항목을 하나 심어두고, 그게 팝될 때(=뒤로가기)마다
-// 다시 심어서 계속 붙잡아두는 방식입니다. 게임이 running이 아닐 때(선택/결과
-// 화면)는 심지 않아 뒤로가기가 평소처럼 동작합니다.
-let backTrapArmed = false;
-function armBackTrapIfNeeded() {
-  if (backTrapArmed) return;
+// 같습니다. history에 가짜 항목을 여러 개(BACK_TRAP_CUSHION) 미리 쌓아두고
+// 뒤로가기로 하나씩 소모될 때마다 다시 채워 넣습니다 — 매번 딱 1개씩만
+// 재예치하면 기기에 따라 뒤로가기를 연달아 빠르게 눌렀을 때 재예치가
+// 따라가지 못해 허브까지 밀려나가는 경우가 있어, 여유분을 넉넉히 둡니다.
+// trapDepth는 "지금 위치에서 게임 진입 시점까지 되돌아가는 데 필요한
+// 단계 수"를 그대로 추적하므로, 게임을 정상적으로 끝낼 때 clearBackTrap()
+// 으로 한 번에 되감아 흔적 없이 정리할 수 있습니다.
+const BACK_TRAP_CUSHION = 4;
+let trapDepth = 0;
+
+function pushTrapEntry() {
   history.pushState({ ddongBackTrap: true }, "", location.href);
-  backTrapArmed = true;
+  trapDepth += 1;
 }
+
+function armBackTrap() {
+  if (trapDepth > 0) return;
+  for (let i = 0; i < BACK_TRAP_CUSHION; i++) pushTrapEntry();
+}
+
+function clearBackTrap() {
+  if (trapDepth <= 0) return;
+  const depth = trapDepth;
+  trapDepth = 0;
+  history.go(-depth);
+}
+
 window.addEventListener("popstate", () => {
-  backTrapArmed = false;
+  if (trapDepth > 0) trapDepth -= 1;
   if (running) {
     togglePause();
-    armBackTrapIfNeeded();
+    pushTrapEntry();
   }
 });
 
@@ -635,11 +653,12 @@ function startGame() {
   cancelAnimationFrame(rafId);
   lastTimestamp = null;
   rafId = requestAnimationFrame(loop);
-  armBackTrapIfNeeded();
+  armBackTrap();
 }
 
 function endGame() {
   running = false;
+  clearBackTrap();
   cancelAnimationFrame(rafId);
   hud.classList.add("hidden");
   gameoverHitImg.src = selectedCharacter.hitSrc || selectedCharacter.src;
@@ -666,6 +685,7 @@ pauseRestartBtn.addEventListener("click", () => {
 pauseSelectBtn.addEventListener("click", () => {
   running = false;
   paused = false;
+  clearBackTrap();
   cancelAnimationFrame(rafId);
   pauseScreen.classList.add("hidden");
   hud.classList.add("hidden");
