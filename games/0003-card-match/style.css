@@ -103,12 +103,30 @@ html, body {
   transform: rotateY(180deg);
 }
 
-.card.matched .card-inner {
-  opacity: 0.35;
-}
-
 .card.matched {
   cursor: default;
+}
+
+.card.matched .card-front {
+  box-shadow: 0 0 0 3px #4caf50 inset;
+}
+
+.card.matched .card-front::after {
+  content: "✓";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #4caf50;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 
 .card-face {
@@ -124,18 +142,18 @@ html, body {
 
 .card-back {
   background: linear-gradient(135deg, #ffcc00, #ff9500);
-  font-size: 22px;
+  font-size: clamp(28px, 9vw, 56px);
 }
 
 .card-front {
   background: #fff;
   transform: rotateY(180deg);
-  font-size: 30px;
+  font-size: clamp(32px, 10vw, 64px);
 }
 
 .card-front img {
-  width: 82%;
-  height: 82%;
+  width: 92%;
+  height: 92%;
   object-fit: contain;
 }
 
@@ -196,10 +214,15 @@ html, body {
 }
 
 #homeLink, #homeLink2 {
+  display: inline-block;
   color: #fff;
-  opacity: 0.75;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  background: rgba(255,255,255,0.15);
+  padding: 10px 18px;
+  border-radius: 999px;
+  transition: background 0.15s, transform 0.15s;
 }
 
 #homeLink {
@@ -213,7 +236,8 @@ html, body {
 }
 
 #homeLink:active, #homeLink2:active {
-  opacity: 1;
+  background: rgba(255,255,255,0.3);
+  transform: scale(0.96);
 }
 
 #rankingList {

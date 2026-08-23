@@ -66,15 +66,11 @@ function buildCharacterSelect() {
   SELECTABLE_CHARACTERS.forEach((c) => {
     const card = document.createElement("div");
     card.className = "character-card";
-    const no = document.createElement("div");
-    no.className = "no";
-    no.textContent = c.no;
     const img = document.createElement("img");
     img.src = c.src;
     const name = document.createElement("div");
     name.className = "name";
     name.textContent = c.name;
-    card.appendChild(no);
     card.appendChild(img);
     card.appendChild(name);
     card.addEventListener("click", () => {

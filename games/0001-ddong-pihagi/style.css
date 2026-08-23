@@ -93,14 +93,20 @@ html, body {
   position: absolute;
   top: 14px;
   left: 16px;
+  display: inline-block;
   color: #fff;
-  opacity: 0.75;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  background: rgba(255,255,255,0.15);
+  padding: 10px 18px;
+  border-radius: 999px;
+  transition: background 0.15s, transform 0.15s;
 }
 
 #homeLink:active {
-  opacity: 1;
+  background: rgba(255,255,255,0.3);
+  transform: scale(0.96);
 }
 
 #gameoverHitImg {
@@ -155,7 +161,6 @@ html, body {
 }
 
 .character-card {
-  position: relative;
   background: rgba(255,255,255,0.1);
   border: 3px solid transparent;
   border-radius: 16px;
@@ -163,19 +168,6 @@ html, body {
   width: 150px;
   cursor: pointer;
   transition: transform 0.15s, border-color 0.15s, background 0.15s;
-}
-
-.character-card .no {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: rgba(0,0,0,0.45);
-  color: #ffcc00;
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  padding: 2px 7px;
-  border-radius: 999px;
 }
 
 .character-card:hover,
