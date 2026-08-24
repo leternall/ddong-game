@@ -158,7 +158,7 @@ const PAUSE_ZONE_MARGIN = 30;
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 
 const MISSILE_SPEED = 12;
-const MISSILE_INTERVAL_FRAMES = 42; // 60fps 기준 약 0.7초마다 자동 발사
+const MISSILE_INTERVAL_FRAMES = 24; // 60fps 기준 약 0.4초마다 자동 발사
 const MISSILE_HIT_RADIUS = 12;
 
 const BUG_START_COUNT = 10;
@@ -183,7 +183,7 @@ function spawnBug() {
     y: Math.random() * (playHeight * 0.5),
     vx: (Math.random() - 0.5) * 2,
     vy: (Math.random() - 0.5) * 2,
-    maxSpeed: 1.4 + Math.random() * 1.1,
+    maxSpeed: 2.6 + Math.random() * 2,
     size,
     emoji,
   });
@@ -376,9 +376,10 @@ function updateBugs(dt) {
   const margin = 20;
   const bugAreaBottom = playHeight * 0.8;
   bugs.forEach((b) => {
-    // 랜덤워크로 "웽웽" 날아다니는 느낌을 냅니다.
-    b.vx += (Math.random() - 0.5) * 0.6 * dt;
-    b.vy += (Math.random() - 0.5) * 0.6 * dt;
+    // 랜덤워크로 "웽웽" 날아다니는 느낌을 냅니다. 방향을 더 자주 크게
+    // 바꿔야 미사일을 요리조리 피하는 느낌이 살아서, 가속도를 키웠습니다.
+    b.vx += (Math.random() - 0.5) * 1.1 * dt;
+    b.vy += (Math.random() - 0.5) * 1.1 * dt;
     b.vx = Math.max(-b.maxSpeed, Math.min(b.maxSpeed, b.vx));
     b.vy = Math.max(-b.maxSpeed, Math.min(b.maxSpeed, b.vy));
     b.x += b.vx * dt;
