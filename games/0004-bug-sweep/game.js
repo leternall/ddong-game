@@ -143,7 +143,7 @@ function resize() {
 
   if (player) {
     player.y = playHeight - player.h / 2 - 10;
-    player.x = Math.max(player.w / 2, Math.min(width - player.w / 2, player.x));
+    player.x = Math.max(PLAYER_EDGE_INSET, Math.min(width - PLAYER_EDGE_INSET, player.x));
   }
 }
 window.addEventListener("resize", resize);
@@ -153,6 +153,11 @@ if (window.visualViewport) {
 
 // ---------- 게임 상수 ----------
 const PLAYER_SIZE = 100;
+// 캐릭터 몸통 절반(=이전 이동 한계)만큼 벽에서 떨어뜨려두면 벌레가 도망칠 수
+// 있는 가장자리(벌레 벽 여백 20px)까지 미사일이 닿지 않는 사각지대가
+// 생깁니다. 캐릭터가 화면 밖으로 살짝 걸쳐 나가더라도 거의 끝까지 붙을 수
+// 있게 해서 그 사각지대를 없앱니다.
+const PLAYER_EDGE_INSET = 15;
 const PLAYER_SPEED = 8;
 const PAUSE_ZONE_MARGIN = 30;
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
@@ -437,7 +442,7 @@ function update(dt) {
   const moveStep = PLAYER_SPEED * dt;
   if (moving.left) player.x -= moveStep;
   if (moving.right) player.x += moveStep;
-  player.x = Math.max(player.w / 2, Math.min(width - player.w / 2, player.x));
+  player.x = Math.max(PLAYER_EDGE_INSET, Math.min(width - PLAYER_EDGE_INSET, player.x));
 
   // 자동 미사일 발사
   missileTimer += dt;
