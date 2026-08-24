@@ -188,7 +188,7 @@ const BOSS_TYPES = [
 const BOSS_HP = 3;
 const BOSS_SIZE = 64;
 const BOSS_KILL_SCORE = 50;
-const SPRAY_DROP_SPEED = 1.2; // 벌레보다 훨씬 천천히 떨어짐
+const SPRAY_DROP_SPEED = 2.6; // 너무 느리다는 피드백으로 상향
 const SPRAY_DROP_CATCH_MARGIN = 20;
 
 resize();
@@ -443,6 +443,14 @@ window.addEventListener("keyup", (e) => {
 // 움직이지 않고도 게임이 되는 문제가 있었습니다.
 const MISSILE_LANE_AVOID_RADIUS = 55;
 const MISSILE_LANE_AVOID_PUSH = 2.2;
+// 캐릭터를 좌우 벽 쪽에 가까이 붙여두면, 회피 중인 벌레가 벽에 막혀
+// 그 구석에 갇힌 채로 미사일에 하나씩 순서대로 맞아 죽는 "몰이사냥"이
+// 가능했습니다. 벽 근처(구석)에 있는 벌레는 사격 라인 눈치를 보지 않고
+// 무조건 벽에서 벗어나는 쪽으로 움직이게 해서, 갇혀 있지 않고 계속
+// 빠져나가려 하도록 만듭니다(그 과정에서 사격 라인을 가로지르며 맞을
+// 수도 있지만, 안전하게 갇혀 farming 당하는 것보다는 낫습니다).
+const CORNER_ESCAPE_ZONE = 50; // 벽에서 이 거리 안이면 "구석"
+const CORNER_ESCAPE_PUSH = 2.6;
 // 불빛(가로등 전구)을 향해 은근히 끌리는 불나방 본능. 사격 라인 회피보다
 // 훨씬 약하게 줘서, 캐릭터를 피하는 게 항상 우선이고 그 외엔 불빛 쪽으로
 // 모여드는 느낌만 냅니다.
@@ -470,13 +478,21 @@ function updateBugs(dt) {
     b.vx += (dxLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
     b.vy += (dyLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
 
-    // 캐릭터의 사격 라인(정수리 위 세로줄) 회피 — 불빛 끌림보다 훨씬 강해서
-    // 사격 라인 안에서는 이쪽이 이깁니다.
-    const dxFromPlayer = b.x - player.x;
-    if (Math.abs(dxFromPlayer) < MISSILE_LANE_AVOID_RADIUS) {
-      const dir = dxFromPlayer === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(dxFromPlayer);
-      const strength = 1 - Math.abs(dxFromPlayer) / MISSILE_LANE_AVOID_RADIUS;
-      b.vx += dir * strength * MISSILE_LANE_AVOID_PUSH * dt;
+    // 벽 구석에 몰렸으면 사격 라인 회피보다 벽 탈출이 우선입니다.
+    const nearLeftWall = b.x < margin + CORNER_ESCAPE_ZONE;
+    const nearRightWall = b.x > width - margin - CORNER_ESCAPE_ZONE;
+    if (nearLeftWall || nearRightWall) {
+      const escapeDir = nearLeftWall ? 1 : -1;
+      b.vx += escapeDir * CORNER_ESCAPE_PUSH * dt;
+    } else {
+      // 캐릭터의 사격 라인(정수리 위 세로줄) 회피 — 불빛 끌림보다 훨씬
+      // 강해서 사격 라인 안에서는 이쪽이 이깁니다.
+      const dxFromPlayer = b.x - player.x;
+      if (Math.abs(dxFromPlayer) < MISSILE_LANE_AVOID_RADIUS) {
+        const dir = dxFromPlayer === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(dxFromPlayer);
+        const strength = 1 - Math.abs(dxFromPlayer) / MISSILE_LANE_AVOID_RADIUS;
+        b.vx += dir * strength * MISSILE_LANE_AVOID_PUSH * dt;
+      }
     }
 
     b.vx = Math.max(-b.maxSpeed, Math.min(b.maxSpeed, b.vx));
