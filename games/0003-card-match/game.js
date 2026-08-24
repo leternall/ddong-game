@@ -117,7 +117,8 @@ function startTimerInterval() {
   clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     const elapsed = currentElapsed();
-    timerEl.textContent = formatTime(elapsed);
+    // 화면에는 30분에서 거꾸로 줄어드는 남은 시간을 보여줍니다.
+    timerEl.textContent = formatTime(Math.max(0, TIME_LIMIT_MS - elapsed));
     if (running && !paused && elapsed >= TIME_LIMIT_MS) {
       endGame(false, "timeout");
     }
@@ -455,7 +456,7 @@ function saveRunAndGetRank(run) {
 }
 
 function formatRunLabel(r) {
-  return r.cleared ? `${r.score}점(클리어)` : `${r.score}점`;
+  return `${r.score}점`;
 }
 
 function escapeHtml(s) {
@@ -541,7 +542,7 @@ function startGame() {
   hud.classList.remove("hidden");
 
   updateHud();
-  timerEl.textContent = formatTime(0);
+  timerEl.textContent = formatTime(TIME_LIMIT_MS);
   startTimerInterval();
   startLevel();
   armBackTrap();

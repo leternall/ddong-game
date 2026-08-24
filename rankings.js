@@ -60,7 +60,7 @@ function formatTime(ms) {
 
 function formatLabel(entry, format) {
   if (format === "run") {
-    return entry.cleared ? `${entry.score}점(클리어)` : `${entry.score}점`;
+    return `${entry.score}점`;
   }
   return `${entry.score}점`;
 }
