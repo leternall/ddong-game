@@ -93,9 +93,10 @@ let width, height;
 let playHeight;
 let controlHeight;
 
-let player, missiles, bugs, fallingBugs, popEffects, score, killCount, sprayCount;
+let player, missiles, bugs, fallingBugs, popEffects, sprayDrops, score, killCount, sprayCount;
 let bugSpawnTimer, missileTimer;
 let running, paused;
+let bossActive;
 let moving = { left: false, right: false };
 
 // 휴대폰 하단 제스처/내비게이션 바 높이(안전 영역)를 실측합니다.
@@ -164,8 +165,8 @@ const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 
 const MISSILE_SPEED = 12;
 const MISSILE_INTERVAL_FRAMES = 24; // 60fps 기준 약 0.4초마다 자동 발사
-const MISSILE_RADIUS = 7.5; // 기존 5px의 1.5배 — 더 쉽게 맞도록
-const MISSILE_HIT_RADIUS = 18; // 기존 12px의 1.5배
+const MISSILE_RADIUS = 6.5; // 기존 5px의 1.3배 — 1.5배는 너무 쉬워서 하향
+const MISSILE_HIT_RADIUS = 15.6; // 기존 12px의 1.3배
 
 const BUG_START_COUNT = 10;
 const BUG_SPAWN_INTERVAL_FRAMES = 30; // 60fps 기준 0.5초
@@ -176,6 +177,19 @@ const BUG_TYPES = ["🦟", "🪰", "🦋"];
 const SPRAY_START = 2;
 const SPRAY_MAX = 2;
 const KILLS_PER_SPRAY = 100;
+
+// 100마리를 잡으면 곧바로 스프레이를 주는 대신, 대왕 벌레(메뚜기/벌)가
+// 나타납니다. 3방을 맞아야 죽고, 죽으면 스프레이가 천천히 떨어져서 캐릭터가
+// 직접 받아야 스프레이가 늘어납니다.
+const BOSS_TYPES = [
+  { emoji: "🦗", name: "대왕 초록 메뚜기" },
+  { emoji: "🐝", name: "대왕 노란 벌" },
+];
+const BOSS_HP = 3;
+const BOSS_SIZE = 64;
+const BOSS_KILL_SCORE = 50;
+const SPRAY_DROP_SPEED = 1.2; // 벌레보다 훨씬 천천히 떨어짐
+const SPRAY_DROP_CATCH_MARGIN = 20;
 
 resize();
 
@@ -192,7 +206,32 @@ function spawnBug() {
     maxSpeed: 2.6 + Math.random() * 2,
     size,
     emoji,
+    hp: 1,
   });
+}
+
+function spawnBossBug() {
+  if (bossActive) return;
+  const type = BOSS_TYPES[Math.floor(Math.random() * BOSS_TYPES.length)];
+  bugs.push({
+    x: Math.random() * (width - 80) + 40,
+    y: Math.random() * (playHeight * 0.4) + 40,
+    vx: (Math.random() - 0.5) * 1.5,
+    vy: (Math.random() - 0.5) * 1.5,
+    // 덩치가 커서 일반 벌레보다는 조금 느리게 움직입니다.
+    maxSpeed: 1.6 + Math.random() * 0.8,
+    size: BOSS_SIZE,
+    emoji: type.emoji,
+    isBoss: true,
+    hp: BOSS_HP,
+    maxHp: BOSS_HP,
+  });
+  bossActive = true;
+  showLevelUpToast(`${type.name} 출현!`);
+}
+
+function spawnSprayDrop(x, y) {
+  sprayDrops.push({ x, y, vy: SPRAY_DROP_SPEED });
 }
 
 function resetGame() {
@@ -206,9 +245,11 @@ function resetGame() {
   bugs = [];
   fallingBugs = [];
   popEffects = [];
+  sprayDrops = [];
   score = 0;
   killCount = 0;
   sprayCount = SPRAY_START;
+  bossActive = false;
   bugSpawnTimer = 0;
   missileTimer = 0;
   moving.left = false;
@@ -245,16 +286,15 @@ function showLevelUpToast(text) {
   }, 1200);
 }
 
-// 잡은 벌레 수를 더하고, 100마리 단위를 넘길 때마다 스프레이를 하나
-// 채워줍니다(최대 SPRAY_MAX). 여러 마리를 한 번에 잡는 스프레이 사용 시에도
-// 정확히 처리되도록 "몇 개의 100 단위를 새로 넘겼는지"로 계산합니다.
+// 잡은 벌레 수를 더하고, 100마리 단위를 넘길 때마다 스프레이를 바로 주는
+// 대신 대왕 벌레를 등장시킵니다. 여러 마리를 한 번에 잡는 스프레이 사용
+// 시에도 정확히 처리되도록 "몇 개의 100 단위를 새로 넘겼는지"로 계산합니다.
 function addKills(n) {
   const before = Math.floor(killCount / KILLS_PER_SPRAY);
   killCount += n;
   const after = Math.floor(killCount / KILLS_PER_SPRAY);
-  if (after > before && sprayCount < SPRAY_MAX) {
-    sprayCount = Math.min(SPRAY_MAX, sprayCount + (after - before));
-    showLevelUpToast("스프레이 +1!");
+  if (after > before) {
+    spawnBossBug();
   }
 }
 
@@ -346,11 +386,31 @@ function bindHold(btn, onDown, onUp) {
 bindHold(leftBtn, () => { moving.left = true; }, () => { moving.left = false; });
 bindHold(rightBtn, () => { moving.right = true; }, () => { moving.right = false; });
 
+// 스프레이는 일반 벌레는 화면에 있는 만큼 전부 즉시 떨어뜨려 잡지만,
+// 대왕 벌레는 에너지가 한 칸만 깎입니다(공짜로 잡히지 않도록).
 function useSpray() {
   if (!running || paused) return;
   if (sprayCount <= 0 || bugs.length === 0) return;
   sprayCount--;
+
+  let normalKilled = 0;
+  const survivors = [];
   bugs.forEach((b) => {
+    if (b.isBoss) {
+      b.hp -= 1;
+      spawnPopEffect(b.x, b.y, b.size * 0.5);
+      if (b.hp <= 0) {
+        spawnPopEffect(b.x, b.y, b.size);
+        spawnSprayDrop(b.x, b.y);
+        bossActive = false;
+        score += BOSS_KILL_SCORE;
+        addKills(1);
+      } else {
+        survivors.push(b);
+      }
+      return;
+    }
+    normalKilled++;
     fallingBugs.push({
       x: b.x, y: b.y, size: b.size, emoji: b.emoji,
       vy: 2 + Math.random() * 1.5,
@@ -358,10 +418,9 @@ function useSpray() {
       rotSpeed: (Math.random() - 0.5) * 0.25,
     });
   });
-  const killedNow = bugs.length;
-  bugs = [];
-  addKills(killedNow);
-  score += killedNow * 10;
+  bugs = survivors;
+  score += normalKilled * 10;
+  if (normalKilled > 0) addKills(normalKilled);
   updateHud();
 }
 
@@ -456,6 +515,31 @@ function updatePopEffects(dt) {
   }
 }
 
+// 대왕 벌레를 잡으면 떨어지는 스프레이. 캐릭터 몸통 높이에서 x가 가까우면
+// "받은" 것으로 치고 스프레이가 늘어나고, 못 받고 지나치면 그냥 사라집니다.
+function updateSprayDrops(dt) {
+  for (let i = sprayDrops.length - 1; i >= 0; i--) {
+    const d = sprayDrops[i];
+    d.y += d.vy * dt;
+
+    const caughtX = Math.abs(d.x - player.x) < player.w / 2 + SPRAY_DROP_CATCH_MARGIN;
+    const caughtY = d.y >= player.y - player.h / 2 && d.y <= player.y + player.h / 2;
+    if (caughtX && caughtY) {
+      sprayDrops.splice(i, 1);
+      if (sprayCount < SPRAY_MAX) {
+        sprayCount++;
+        showLevelUpToast("스프레이 획득!");
+      } else {
+        showLevelUpToast("스프레이 이미 최대!");
+      }
+      updateHud();
+      continue;
+    }
+
+    if (d.y > height + 40) sprayDrops.splice(i, 1);
+  }
+}
+
 function update(dt) {
   // 플레이어 좌우 이동
   const moveStep = PLAYER_SPEED * dt;
@@ -477,8 +561,10 @@ function update(dt) {
   updateBugs(dt);
   updateFallingBugs(dt);
   updatePopEffects(dt);
+  updateSprayDrops(dt);
 
-  // 미사일-벌레 충돌: 떨어뜨리지 않고 그 자리에서 바로 터뜨려 없앱니다.
+  // 미사일-벌레 충돌: 일반 벌레는 한 방에 터져 사라지고, 대왕 벌레는
+  // 에너지가 1씩 깎이다가 0이 되면 죽으면서 스프레이를 떨어뜨립니다.
   for (let i = missiles.length - 1; i >= 0; i--) {
     const m = missiles[i];
     let hitIndex = -1;
@@ -494,10 +580,22 @@ function update(dt) {
     }
     if (hitIndex >= 0) {
       const b = bugs[hitIndex];
+      missiles.splice(i, 1);
+      b.hp -= 1;
+      if (b.hp > 0) {
+        spawnPopEffect(b.x, b.y, b.size * 0.5);
+        updateHud();
+        continue;
+      }
       spawnPopEffect(b.x, b.y, b.size);
       bugs.splice(hitIndex, 1);
-      missiles.splice(i, 1);
-      score += 10;
+      if (b.isBoss) {
+        spawnSprayDrop(b.x, b.y);
+        bossActive = false;
+        score += BOSS_KILL_SCORE;
+      } else {
+        score += 10;
+      }
       addKills(1);
       updateHud();
     }
@@ -634,6 +732,52 @@ function drawBug(b) {
   ctx.textBaseline = "middle";
   ctx.fillText(b.emoji, b.x, b.y);
   ctx.restore();
+
+  if (b.isBoss) drawBossHpPips(b);
+}
+
+// 대왕 벌레 머리 위에 남은 에너지를 점으로 표시합니다.
+function drawBossHpPips(b) {
+  ctx.save();
+  const gap = 11;
+  const startX = b.x - ((b.maxHp - 1) * gap) / 2;
+  const y = b.y - b.size / 2 - 12;
+  for (let i = 0; i < b.maxHp; i++) {
+    ctx.beginPath();
+    ctx.arc(startX + i * gap, y, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = i < b.hp ? "#ff5252" : "rgba(255,255,255,0.25)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// 대왕 벌레가 죽으면 떨어지는 스프레이. 조작 버튼과 같은 파란 캔 + F
+// 디자인을 캔버스로 간단히 그려서 통일감을 줍니다.
+function drawSprayDrop(d) {
+  ctx.save();
+  ctx.translate(d.x, d.y);
+  ctx.shadowColor = "#7ec8ff";
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = "#1565d8";
+  ctx.strokeStyle = "#0c3e8f";
+  ctx.lineWidth = 1;
+  const w = 18, h = 22;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(-w / 2, -h / 2 + 4, w, h - 4, 3) : ctx.rect(-w / 2, -h / 2 + 4, w, h - 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#2a2a2a";
+  ctx.fillRect(-3.5, -h / 2 - 3, 7, 6);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 11px Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("F", 0, 4);
+  ctx.restore();
 }
 
 function drawFallingBug(b) {
@@ -672,6 +816,7 @@ function draw() {
   ctx.clearRect(0, 0, width, height);
   drawAlleyBackground();
   fallingBugs.forEach(drawFallingBug);
+  sprayDrops.forEach(drawSprayDrop);
   bugs.forEach(drawBug);
   popEffects.forEach(drawPopEffect);
   missiles.forEach(drawMissile);
