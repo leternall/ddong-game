@@ -162,7 +162,7 @@ const MISSILE_INTERVAL_FRAMES = 18; // 60fps 기준 약 0.3초마다 자동 발�
 const MISSILE_HIT_RADIUS = 12;
 
 const BUG_START_COUNT = 10;
-const BUG_SPAWN_INTERVAL_FRAMES = 60; // 60fps 기준 1초
+const BUG_SPAWN_INTERVAL_FRAMES = 30; // 60fps 기준 0.5초
 const BUG_GAMEOVER_THRESHOLD = 50;
 // 날아다니는 벌레만 사용합니다(지렁이는 날지 않아 컨셉과 안 맞아서 제외).
 const BUG_TYPES = ["🦟", "🪰", "🦋"];
@@ -175,7 +175,7 @@ resize();
 
 // ---------- 게임 상태 초기화 ----------
 function spawnBug() {
-  const size = 15 + Math.random() * 7;
+  const size = 24 + Math.random() * 10;
   const emoji = BUG_TYPES[Math.floor(Math.random() * BUG_TYPES.length)];
   bugs.push({
     x: Math.random() * width,
