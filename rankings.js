@@ -65,6 +65,16 @@ function formatLabel(entry, format) {
   return `${entry.score}점`;
 }
 
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function nameOrAnon(entry) {
+  return entry.name ? escapeHtml(entry.name) : "익명";
+}
+
 function render() {
   const game = RANK_GAMES[index];
   slideNumberEl.textContent = game.id;
@@ -81,7 +91,7 @@ function render() {
     rankEmptyEl.classList.add("hidden");
     top.forEach((entry, i) => {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${i + 1}위</span><span>${formatLabel(entry, game.format)}</span>`;
+      li.innerHTML = `<span>${i + 1}위</span><span>${nameOrAnon(entry)}</span><span>${formatLabel(entry, game.format)}</span>`;
       rankListEl.appendChild(li);
     });
   }

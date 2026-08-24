@@ -26,6 +26,10 @@ const gameoverHitImg = document.getElementById("gameoverHitImg");
 const gameoverTitleEl = document.getElementById("gameoverTitle");
 const finalScoreEl = document.getElementById("finalScore");
 const rankMessageEl = document.getElementById("rankMessage");
+const nameEntryEl = document.getElementById("nameEntry");
+const nameInputEl = document.getElementById("nameInput");
+const nameSubmitBtn = document.getElementById("nameSubmitBtn");
+const nameSavedMsgEl = document.getElementById("nameSavedMsg");
 const rankingListEl = document.getElementById("rankingList");
 const restartBtn = document.getElementById("restartBtn");
 
@@ -606,6 +610,16 @@ function saveScoreAndGetRank(finalScore) {
   return { rank, rankings: trimmed, entryTs: entry.ts };
 }
 
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function nameOrAnon(r) {
+  return r.name ? escapeHtml(r.name) : "익명";
+}
+
 function renderRanking(rankInfo) {
   const { rank, rankings, entryTs } = rankInfo;
   rankMessageEl.textContent = `역대 ${rank}위!`;
@@ -620,19 +634,52 @@ function renderRanking(rankInfo) {
   top.forEach((r, i) => {
     const li = document.createElement("li");
     if (r.ts === entryTs) li.classList.add("me");
-    li.innerHTML = `<span>${i + 1}위</span><span>${r.score}점</span>`;
+    li.innerHTML = `<span>${i + 1}위</span><span>${nameOrAnon(r)}</span><span>${r.score}점</span>`;
     ol.appendChild(li);
   });
 
   if (rank > 5) {
     const li = document.createElement("li");
     li.classList.add("me");
-    li.innerHTML = `<span>${rank}위</span><span>${rankings[rank - 1].score}점 (내 기록)</span>`;
+    li.innerHTML = `<span>${rank}위</span><span>${nameOrAnon(rankings[rank - 1])}</span><span>${rankings[rank - 1].score}점 (내 기록)</span>`;
     ol.appendChild(li);
   }
 
   rankingListEl.appendChild(ol);
 }
+
+// ---------- 게임오버 후 이름 등록(선택) ----------
+let currentEntryTs = null;
+
+function resetNameEntry() {
+  nameInputEl.value = "";
+  nameEntryEl.classList.remove("hidden");
+  nameSavedMsgEl.classList.add("hidden");
+}
+
+function registerName() {
+  if (currentEntryTs == null) return;
+  const name = nameInputEl.value.trim().slice(0, 8);
+  const rankings = loadRankings();
+  const idx = rankings.findIndex((r) => r.ts === currentEntryTs);
+  if (idx >= 0) {
+    rankings[idx].name = name;
+    localStorage.setItem(RANKING_KEY, JSON.stringify(rankings));
+    const rank = rankings
+      .slice()
+      .sort((a, b) => b.score - a.score || a.ts - b.ts)
+      .findIndex((r) => r.ts === currentEntryTs) + 1;
+    renderRanking({ rank, rankings, entryTs: currentEntryTs });
+  }
+  nameEntryEl.classList.add("hidden");
+  nameSavedMsgEl.textContent = name ? `"${name}"(으)로 등록 완료!` : "이름 없이 저장했어요.";
+  nameSavedMsgEl.classList.remove("hidden");
+}
+
+nameSubmitBtn.addEventListener("click", registerName);
+nameInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") registerName();
+});
 
 // ---------- 시작/종료 ----------
 function startGame() {
@@ -659,6 +706,8 @@ function endGame() {
   gameoverTitleEl.textContent = "게임 오버!";
   finalScoreEl.textContent = `점수: ${score} (레벨 ${level} · ${distanceM}m 도달)`;
   const rankInfo = saveScoreAndGetRank(score);
+  currentEntryTs = rankInfo.entryTs;
+  resetNameEntry();
   renderRanking(rankInfo);
   gameoverScreen.classList.remove("hidden");
 }

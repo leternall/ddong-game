@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>벌레 소탕</title>
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <div id="game-container">
@@ -52,6 +52,11 @@
       <h1>게임 오버!</h1>
       <p id="finalScore">점수: 0</p>
       <p id="rankMessage"></p>
+      <div id="nameEntry">
+        <input id="nameInput" type="text" placeholder="이름(선택, 최대 8자)" maxlength="8" autocomplete="off">
+        <button id="nameSubmitBtn">등록</button>
+      </div>
+      <p id="nameSavedMsg" class="hidden"></p>
       <div id="rankingList"></div>
       <button id="restartBtn">다시 하기</button>
     </div>
@@ -59,6 +64,6 @@
     <div id="levelup-toast" class="hidden"></div>
   </div>
 
-  <script src="game.js?v=12"></script>
+  <script src="game.js?v=14"></script>
 </body>
 </html>

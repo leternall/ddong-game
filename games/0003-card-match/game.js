@@ -22,6 +22,10 @@ const resultScreen = document.getElementById("result-screen");
 const resultTitleEl = document.getElementById("resultTitle");
 const resultDetailEl = document.getElementById("resultDetail");
 const rankMessageEl = document.getElementById("rankMessage");
+const nameEntryEl = document.getElementById("nameEntry");
+const nameInputEl = document.getElementById("nameInput");
+const nameSubmitBtn = document.getElementById("nameSubmitBtn");
+const nameSavedMsgEl = document.getElementById("nameSavedMsg");
 const rankingListEl = document.getElementById("rankingList");
 const restartBtn = document.getElementById("restartBtn");
 
@@ -450,6 +454,16 @@ function formatRunLabel(r) {
   return r.cleared ? `${formatTime(r.timeMs)} 클리어` : `${r.score}점`;
 }
 
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function nameOrAnon(r) {
+  return r.name ? escapeHtml(r.name) : "익명";
+}
+
 function renderRanking(rankInfo) {
   const { rank, runs, ts } = rankInfo;
   rankMessageEl.textContent = `역대 ${rank}위!`;
@@ -464,19 +478,49 @@ function renderRanking(rankInfo) {
   top.forEach((r, i) => {
     const li = document.createElement("li");
     if (r.ts === ts) li.classList.add("me");
-    li.innerHTML = `<span>${i + 1}위</span><span>${formatRunLabel(r)}</span>`;
+    li.innerHTML = `<span>${i + 1}위</span><span>${nameOrAnon(r)}</span><span>${formatRunLabel(r)}</span>`;
     ol.appendChild(li);
   });
 
   if (rank > 5) {
     const li = document.createElement("li");
     li.classList.add("me");
-    li.innerHTML = `<span>${rank}위</span><span>${formatRunLabel(runs[rank - 1])} (내 기록)</span>`;
+    li.innerHTML = `<span>${rank}위</span><span>${nameOrAnon(runs[rank - 1])}</span><span>${formatRunLabel(runs[rank - 1])} (내 기록)</span>`;
     ol.appendChild(li);
   }
 
   rankingListEl.appendChild(ol);
 }
+
+// ---------- 게임오버 후 이름 등록(선택) ----------
+let currentEntryTs = null;
+
+function resetNameEntry() {
+  nameInputEl.value = "";
+  nameEntryEl.classList.remove("hidden");
+  nameSavedMsgEl.classList.add("hidden");
+}
+
+function registerName() {
+  if (currentEntryTs == null) return;
+  const name = nameInputEl.value.trim().slice(0, 8);
+  const runs = loadRuns();
+  const idx = runs.findIndex((r) => r.ts === currentEntryTs);
+  if (idx >= 0) {
+    runs[idx].name = name;
+    localStorage.setItem(RANKING_KEY, JSON.stringify(runs));
+    const rank = runs.slice().sort(compareRuns).findIndex((r) => r.ts === currentEntryTs) + 1;
+    renderRanking({ rank, runs, ts: currentEntryTs });
+  }
+  nameEntryEl.classList.add("hidden");
+  nameSavedMsgEl.textContent = name ? `"${name}"(으)로 등록 완료!` : "이름 없이 저장했어요.";
+  nameSavedMsgEl.classList.remove("hidden");
+}
+
+nameSubmitBtn.addEventListener("click", registerName);
+nameInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") registerName();
+});
 
 // ---------- 시작/종료 ----------
 function startGame() {
@@ -511,6 +555,8 @@ function endGame(cleared) {
 
   const run = { cleared, timeMs: elapsedMs, score, ts: Date.now() };
   const rankInfo = saveRunAndGetRank(run);
+  currentEntryTs = rankInfo.ts;
+  resetNameEntry();
 
   resultTitleEl.textContent = cleared ? "🎉 클리어! 🎉" : "게임 오버!";
   resultDetailEl.textContent = cleared

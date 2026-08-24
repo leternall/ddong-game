@@ -25,6 +25,10 @@ const gameoverScreen = document.getElementById("gameover-screen");
 const gameoverHitImg = document.getElementById("gameoverHitImg");
 const finalScoreEl = document.getElementById("finalScore");
 const rankMessageEl = document.getElementById("rankMessage");
+const nameEntryEl = document.getElementById("nameEntry");
+const nameInputEl = document.getElementById("nameInput");
+const nameSubmitBtn = document.getElementById("nameSubmitBtn");
+const nameSavedMsgEl = document.getElementById("nameSavedMsg");
 const rankingListEl = document.getElementById("rankingList");
 const restartBtn = document.getElementById("restartBtn");
 
@@ -207,6 +211,11 @@ function spawnBug() {
     size,
     emoji,
     hp: 1,
+    // 불빛으로 모두 같은 지점을 향해 몰려들면 캐릭터 옆에 한 줄로 쌓여버려
+    // 오히려 몰아 잡기 쉬워지므로, 벌레마다 살짝 다른 지점을 "불빛"으로
+    // 삼게 합니다.
+    lampOffsetX: (Math.random() - 0.5) * 160,
+    lampOffsetY: (Math.random() - 0.5) * 100,
   });
 }
 
@@ -225,6 +234,8 @@ function spawnBossBug() {
     isBoss: true,
     hp: BOSS_HP,
     maxHp: BOSS_HP,
+    lampOffsetX: (Math.random() - 0.5) * 160,
+    lampOffsetY: (Math.random() - 0.5) * 100,
   });
   bossActive = true;
   showLevelUpToast(`${type.name} 출현!`);
@@ -461,22 +472,43 @@ function lampPosition() {
   return { x: width / 2, y: playHeight * 0.12 + 16 };
 }
 
+// 서로 너무 가까이 붙으면 밀어내서, 여러 마리가 한 줄로 쌓여 쉽게 몰아
+// 잡히는 것을 막습니다.
+const BUG_SEPARATION_RADIUS = 34;
+const BUG_SEPARATION_PUSH = 2.6;
+
 function updateBugs(dt) {
   const margin = 20;
   const bugAreaBottom = playHeight * 0.8;
   const lamp = lampPosition();
-  bugs.forEach((b) => {
+  bugs.forEach((b, i) => {
     // 랜덤워크로 "웽웽" 날아다니는 느낌을 냅니다. 방향을 더 자주 크게
     // 바꿔야 미사일을 요리조리 피하는 느낌이 살아서, 가속도를 키웠습니다.
     b.vx += (Math.random() - 0.5) * 1.1 * dt;
     b.vy += (Math.random() - 0.5) * 1.1 * dt;
 
-    // 불빛을 향한 은근한 끌림
-    const dxLamp = lamp.x - b.x;
-    const dyLamp = lamp.y - b.y;
+    // 불빛을 향한 은근한 끌림(벌레마다 살짝 다른 지점을 향함)
+    const targetX = lamp.x + (b.lampOffsetX || 0);
+    const targetY = lamp.y + (b.lampOffsetY || 0);
+    const dxLamp = targetX - b.x;
+    const dyLamp = targetY - b.y;
     const distLamp = Math.hypot(dxLamp, dyLamp) || 1;
     b.vx += (dxLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
     b.vy += (dyLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
+
+    // 다른 벌레와 겹치도록 뭉치면 서로 밀어냅니다.
+    for (let j = 0; j < bugs.length; j++) {
+      if (j === i) continue;
+      const other = bugs[j];
+      const dx = b.x - other.x;
+      const dy = b.y - other.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist < BUG_SEPARATION_RADIUS) {
+        const push = (1 - dist / BUG_SEPARATION_RADIUS) * BUG_SEPARATION_PUSH;
+        b.vx += (dx / dist) * push * dt;
+        b.vy += (dy / dist) * push * dt;
+      }
+    }
 
     // 벽 구석에 몰렸으면 사격 라인 회피보다 벽 탈출이 우선입니다.
     const nearLeftWall = b.x < margin + CORNER_ESCAPE_ZONE;
@@ -906,6 +938,16 @@ function saveScoreAndGetRank(finalScore) {
   return { rank, rankings: trimmed, entryTs: entry.ts };
 }
 
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function nameOrAnon(r) {
+  return r.name ? escapeHtml(r.name) : "익명";
+}
+
 function renderRanking(rankInfo) {
   const { rank, rankings, entryTs } = rankInfo;
   rankMessageEl.textContent = `역대 ${rank}위!`;
@@ -920,19 +962,52 @@ function renderRanking(rankInfo) {
   top.forEach((r, i) => {
     const li = document.createElement("li");
     if (r.ts === entryTs) li.classList.add("me");
-    li.innerHTML = `<span>${i + 1}위</span><span>${r.score}점</span>`;
+    li.innerHTML = `<span>${i + 1}위</span><span>${nameOrAnon(r)}</span><span>${r.score}점</span>`;
     ol.appendChild(li);
   });
 
   if (rank > 5) {
     const li = document.createElement("li");
     li.classList.add("me");
-    li.innerHTML = `<span>${rank}위</span><span>${rankings[rank - 1].score}점 (내 기록)</span>`;
+    li.innerHTML = `<span>${rank}위</span><span>${nameOrAnon(rankings[rank - 1])}</span><span>${rankings[rank - 1].score}점 (내 기록)</span>`;
     ol.appendChild(li);
   }
 
   rankingListEl.appendChild(ol);
 }
+
+// ---------- 게임오버 후 이름 등록(선택) ----------
+let currentEntryTs = null;
+
+function resetNameEntry() {
+  nameInputEl.value = "";
+  nameEntryEl.classList.remove("hidden");
+  nameSavedMsgEl.classList.add("hidden");
+}
+
+function registerName() {
+  if (currentEntryTs == null) return;
+  const name = nameInputEl.value.trim().slice(0, 8);
+  const rankings = loadRankings();
+  const idx = rankings.findIndex((r) => r.ts === currentEntryTs);
+  if (idx >= 0) {
+    rankings[idx].name = name;
+    localStorage.setItem(RANKING_KEY, JSON.stringify(rankings));
+    const rank = rankings
+      .slice()
+      .sort((a, b) => b.score - a.score || a.ts - b.ts)
+      .findIndex((r) => r.ts === currentEntryTs) + 1;
+    renderRanking({ rank, rankings, entryTs: currentEntryTs });
+  }
+  nameEntryEl.classList.add("hidden");
+  nameSavedMsgEl.textContent = name ? `"${name}"(으)로 등록 완료!` : "이름 없이 저장했어요.";
+  nameSavedMsgEl.classList.remove("hidden");
+}
+
+nameSubmitBtn.addEventListener("click", registerName);
+nameInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") registerName();
+});
 
 // ---------- 시작/종료 ----------
 function startGame() {
@@ -958,6 +1033,8 @@ function endGame() {
   gameoverHitImg.classList.remove("hidden");
   finalScoreEl.textContent = `점수: ${score} (${killCount}마리 퇴치)`;
   const rankInfo = saveScoreAndGetRank(score);
+  currentEntryTs = rankInfo.entryTs;
+  resetNameEntry();
   renderRanking(rankInfo);
   gameoverScreen.classList.remove("hidden");
 }
