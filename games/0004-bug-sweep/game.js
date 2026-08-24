@@ -32,6 +32,22 @@ const levelupToast = document.getElementById("levelup-toast");
 
 const RANKING_KEY = "bugsweep-rankings";
 
+// 에프킬라를 연상시키도록 직접 그린 파란 스프레이 캔 아이콘(F 로고 + 분사
+// 표시). 조작 버튼과 HUD의 보유 개수 표시에서 공유해서 씁니다.
+const SPRAY_ICON_SVG = `<svg viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+  <g stroke="#dff1ff" stroke-width="1.6" stroke-linecap="round" opacity="0.95">
+    <line x1="8" y1="7" x2="3" y2="2"/>
+    <line x1="11" y1="4.5" x2="9" y2="0.5"/>
+    <line x1="5" y1="10" x2="0.5" y2="8"/>
+  </g>
+  <ellipse cx="12" cy="9" rx="3.2" ry="1.7" fill="#e8452c"/>
+  <rect x="10.3" y="10" width="3.4" height="3.2" fill="#2a2a2a"/>
+  <rect x="6" y="13" width="12" height="16" rx="2.6" fill="#1565d8" stroke="#0c3e8f" stroke-width="1"/>
+  <rect x="7.3" y="14.2" width="2" height="13.8" rx="1" fill="#ffffff" opacity="0.2"/>
+  <text x="12.2" y="24.5" text-anchor="middle" font-size="10" font-weight="bold" fill="#ffffff" font-family="Arial, sans-serif">F</text>
+</svg>`;
+sprayBtn.innerHTML = SPRAY_ICON_SVG;
+
 // ---------- 캐릭터 목록 ----------
 // 똥피하기(0001)의 04·08번 캐릭터 그림을 그대로 재사용합니다(에셋 중복 없음).
 const CHARACTERS = [
@@ -136,7 +152,7 @@ if (window.visualViewport) {
 }
 
 // ---------- 게임 상수 ----------
-const PLAYER_SIZE = 70;
+const PLAYER_SIZE = 100;
 const PLAYER_SPEED = 8;
 const PAUSE_ZONE_MARGIN = 30;
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
@@ -146,9 +162,10 @@ const MISSILE_INTERVAL_FRAMES = 18; // 60fps 기준 약 0.3초마다 자동 발�
 const MISSILE_HIT_RADIUS = 12;
 
 const BUG_START_COUNT = 10;
-const BUG_SPAWN_INTERVAL_FRAMES = 180; // 60fps 기준 3초
+const BUG_SPAWN_INTERVAL_FRAMES = 60; // 60fps 기준 1초
 const BUG_GAMEOVER_THRESHOLD = 50;
-const BUG_TYPES = ["🦟", "🪰", "🐛"];
+// 날아다니는 벌레만 사용합니다(지렁이는 날지 않아 컨셉과 안 맞아서 제외).
+const BUG_TYPES = ["🦟", "🪰", "🦋"];
 
 const SPRAY_START = 2;
 const SPRAY_MAX = 2;
@@ -158,7 +175,7 @@ resize();
 
 // ---------- 게임 상태 초기화 ----------
 function spawnBug() {
-  const size = 24 + Math.random() * 10;
+  const size = 15 + Math.random() * 7;
   const emoji = BUG_TYPES[Math.floor(Math.random() * BUG_TYPES.length)];
   bugs.push({
     x: Math.random() * width,
@@ -203,7 +220,7 @@ function updateHud() {
   spraysEl.innerHTML = "";
   for (let i = 0; i < SPRAY_MAX; i++) {
     const span = document.createElement("span");
-    span.textContent = "🧴";
+    span.innerHTML = SPRAY_ICON_SVG;
     if (i >= sprayCount) span.classList.add("empty");
     spraysEl.appendChild(span);
   }
@@ -230,7 +247,7 @@ function addKills(n) {
   const after = Math.floor(killCount / KILLS_PER_SPRAY);
   if (after > before && sprayCount < SPRAY_MAX) {
     sprayCount = Math.min(SPRAY_MAX, sprayCount + (after - before));
-    showLevelUpToast("스프레이 +1! 🧴");
+    showLevelUpToast("스프레이 +1!");
   }
 }
 
@@ -453,43 +470,74 @@ function drawAlleyBackground() {
   const lampX = width / 2;
   const lampY = playHeight * 0.12;
 
-  // 가로등 불빛(주변만 밝고 나머지는 어두운 밤 골목 느낌)
-  const glow = ctx.createRadialGradient(lampX, lampY, 0, lampX, lampY, width * 0.65);
+  // 가로등 불빛(주변만 밝고 나머지는 어두운 밤 골목 느낌). 화면 대각선
+  // 길이만큼 넉넉히 퍼지게 해서 양옆이 뚝 끊긴 검은 여백처럼 보이지
+  // 않고 가운데 빛이 자연스럽게 가장자리까지 이어지도록 합니다.
+  const glowRadius = Math.hypot(width, playHeight) * 0.75;
+  const glow = ctx.createRadialGradient(lampX, lampY, 0, lampX, lampY, glowRadius);
   glow.addColorStop(0, "rgba(255,244,200,0.55)");
-  glow.addColorStop(0.4, "rgba(255,224,140,0.16)");
-  glow.addColorStop(1, "rgba(255,224,140,0)");
+  glow.addColorStop(0.35, "rgba(255,224,140,0.2)");
+  glow.addColorStop(0.7, "rgba(70,70,100,0.08)");
+  glow.addColorStop(1, "rgba(40,40,60,0)");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, playHeight);
 
-  // 골목 건물 실루엣
-  ctx.fillStyle = "rgba(8,10,18,0.9)";
-  ctx.fillRect(0, playHeight * 0.15, width * 0.14, playHeight * 0.85);
-  ctx.fillRect(width * 0.87, playHeight * 0.1, width * 0.13, playHeight * 0.9);
-
-  // 가로등 기둥
-  ctx.strokeStyle = "rgba(35,35,42,0.9)";
+  // 가로등 지지대. 화면 위쪽 밖(건물 처마 등)에서 내려와 등 바로 위에서
+  // 끝나고, 등 아래로는 선이 이어지지 않게 합니다.
+  ctx.strokeStyle = "rgba(70,70,80,0.9)";
   ctx.lineWidth = 4;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(lampX, playHeight * 0.3);
-  ctx.lineTo(lampX, playHeight * 0.02);
+  ctx.moveTo(lampX, 0);
+  ctx.lineTo(lampX, lampY - 14);
   ctx.stroke();
 
-  // 등 갓
-  ctx.fillStyle = "rgba(28,28,34,0.95)";
+  // 등 갓: 입체감 나게 사다리꼴 + 밝은 쪽 하이라이트
+  ctx.fillStyle = "#33333e";
   ctx.beginPath();
-  ctx.moveTo(lampX - 16, lampY - 6);
-  ctx.lineTo(lampX + 16, lampY - 6);
-  ctx.lineTo(lampX + 9, lampY + 6);
-  ctx.lineTo(lampX - 9, lampY + 6);
+  ctx.moveTo(lampX - 20, lampY - 10);
+  ctx.lineTo(lampX + 20, lampY - 10);
+  ctx.lineTo(lampX + 11, lampY + 6);
+  ctx.lineTo(lampX - 11, lampY + 6);
   ctx.closePath();
   ctx.fill();
-
-  // 전구
-  ctx.fillStyle = "#fff4c8";
-  ctx.shadowColor = "#ffe98a";
-  ctx.shadowBlur = 14;
+  ctx.fillStyle = "rgba(255,255,255,0.14)";
   ctx.beginPath();
-  ctx.arc(lampX, lampY + 8, 7, 0, Math.PI * 2);
+  ctx.moveTo(lampX - 17, lampY - 9);
+  ctx.lineTo(lampX - 7, lampY - 9);
+  ctx.lineTo(lampX - 10, lampY + 4);
+  ctx.lineTo(lampX - 15, lampY + 4);
+  ctx.closePath();
+  ctx.fill();
+  // 갓 테두리
+  ctx.strokeStyle = "#1a1a20";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(lampX - 20, lampY - 10);
+  ctx.lineTo(lampX + 20, lampY - 10);
+  ctx.lineTo(lampX + 11, lampY + 6);
+  ctx.lineTo(lampX - 11, lampY + 6);
+  ctx.closePath();
+  ctx.stroke();
+
+  // 전구: 겹겹의 글로우로 실제 빛나는 느낌을 냅니다.
+  const bulbY = lampY + 16;
+  const bulbGlow = ctx.createRadialGradient(lampX, bulbY, 0, lampX, bulbY, 30);
+  bulbGlow.addColorStop(0, "rgba(255,255,240,0.95)");
+  bulbGlow.addColorStop(0.35, "rgba(255,235,170,0.5)");
+  bulbGlow.addColorStop(1, "rgba(255,235,170,0)");
+  ctx.fillStyle = bulbGlow;
+  ctx.beginPath();
+  ctx.arc(lampX, bulbY, 30, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fffbe8";
+  ctx.beginPath();
+  ctx.arc(lampX, bulbY, 6.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff4c0";
+  ctx.beginPath();
+  ctx.arc(lampX, bulbY, 3.2, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -519,8 +567,10 @@ function drawMissile(m) {
   ctx.save();
   ctx.fillStyle = "#ffe066";
   ctx.shadowColor = "#fff176";
-  ctx.shadowBlur = 6;
-  ctx.fillRect(m.x - 2, m.y - 10, 4, 14);
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(m.x, m.y, 5, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 

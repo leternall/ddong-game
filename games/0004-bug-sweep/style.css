@@ -65,13 +65,21 @@ body {
 
 #sprays {
   display: flex;
-  gap: 4px;
-  font-size: 24px;
+  gap: 6px;
   line-height: 1;
 }
 
 #sprays span {
+  display: block;
+  width: 20px;
+  height: 25px;
   filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.6));
+}
+
+#sprays span svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 #sprays span.empty {
@@ -135,7 +143,14 @@ body {
   border-radius: 20px;
   background: #ffcc00;
   color: #222;
-  font-size: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#sprayBtn svg {
+  width: 40px;
+  height: 50px;
 }
 
 #sprayBtn:active {

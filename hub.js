@@ -30,7 +30,7 @@ const GAMES = [
     title: "벌레 소탕",
     desc: "벌레를 미사일로 소탕하라!",
     path: "games/0004-bug-sweep/index.html",
-    thumb: "games/0004-bug-sweep/assets/thumb.png?v=1",
+    thumb: "games/0004-bug-sweep/assets/thumb.png?v=2",
     ready: true,
   },
   {
