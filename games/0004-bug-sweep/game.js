@@ -164,7 +164,8 @@ const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 
 const MISSILE_SPEED = 12;
 const MISSILE_INTERVAL_FRAMES = 24; // 60fps 기준 약 0.4초마다 자동 발사
-const MISSILE_HIT_RADIUS = 12;
+const MISSILE_RADIUS = 7.5; // 기존 5px의 1.5배 — 더 쉽게 맞도록
+const MISSILE_HIT_RADIUS = 18; // 기존 12px의 1.5배
 
 const BUG_START_COUNT = 10;
 const BUG_SPAWN_INTERVAL_FRAMES = 30; // 60fps 기준 0.5초
@@ -383,17 +384,35 @@ window.addEventListener("keyup", (e) => {
 // 움직이지 않고도 게임이 되는 문제가 있었습니다.
 const MISSILE_LANE_AVOID_RADIUS = 55;
 const MISSILE_LANE_AVOID_PUSH = 2.2;
+// 불빛(가로등 전구)을 향해 은근히 끌리는 불나방 본능. 사격 라인 회피보다
+// 훨씬 약하게 줘서, 캐릭터를 피하는 게 항상 우선이고 그 외엔 불빛 쪽으로
+// 모여드는 느낌만 냅니다.
+const LIGHT_ATTRACT_FORCE = 0.3;
+
+// drawAlleyBackground()가 그리는 전구 위치와 반드시 같아야 합니다.
+function lampPosition() {
+  return { x: width / 2, y: playHeight * 0.12 + 16 };
+}
 
 function updateBugs(dt) {
   const margin = 20;
   const bugAreaBottom = playHeight * 0.8;
+  const lamp = lampPosition();
   bugs.forEach((b) => {
     // 랜덤워크로 "웽웽" 날아다니는 느낌을 냅니다. 방향을 더 자주 크게
     // 바꿔야 미사일을 요리조리 피하는 느낌이 살아서, 가속도를 키웠습니다.
     b.vx += (Math.random() - 0.5) * 1.1 * dt;
     b.vy += (Math.random() - 0.5) * 1.1 * dt;
 
-    // 캐릭터의 사격 라인(정수리 위 세로줄) 회피
+    // 불빛을 향한 은근한 끌림
+    const dxLamp = lamp.x - b.x;
+    const dyLamp = lamp.y - b.y;
+    const distLamp = Math.hypot(dxLamp, dyLamp) || 1;
+    b.vx += (dxLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
+    b.vy += (dyLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
+
+    // 캐릭터의 사격 라인(정수리 위 세로줄) 회피 — 불빛 끌림보다 훨씬 강해서
+    // 사격 라인 안에서는 이쪽이 이깁니다.
     const dxFromPlayer = b.x - player.x;
     if (Math.abs(dxFromPlayer) < MISSILE_LANE_AVOID_RADIUS) {
       const dir = dxFromPlayer === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(dxFromPlayer);
@@ -603,7 +622,7 @@ function drawMissile(m) {
   ctx.shadowColor = "#fff176";
   ctx.shadowBlur = 8;
   ctx.beginPath();
-  ctx.arc(m.x, m.y, 5, 0, Math.PI * 2);
+  ctx.arc(m.x, m.y, MISSILE_RADIUS, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
