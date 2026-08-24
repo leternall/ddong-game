@@ -5,6 +5,7 @@ remote-session.log
 _*.py
 _*.js
 _*.png
+_originals/
 
 # OS
 Thumbs.db

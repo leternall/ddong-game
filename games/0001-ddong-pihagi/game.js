@@ -33,8 +33,8 @@ const RANKING_KEY = "ddongpihagi-rankings";
 // 64종 카드 풀에서 쓰이는 캐릭터라, 여기 선택 화면에는 selectable: false로
 // 표시해 감춰두고 01·02번만 고를 수 있게 합니다.
 const CHARACTERS = [
-  { no: "01", id: "girl", name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png" },
-  { no: "02", id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png", hitSrc: "assets/character_magpie_hit.png" },
+  { no: "01", id: "girl", name: "소녀 캐릭터", src: "assets/character_girl.png", hitSrc: "assets/character_girl_hit.png?v=2" },
+  { no: "02", id: "magpie", name: "까치 캐릭터", src: "assets/character_magpie.png", hitSrc: "assets/character_magpie_hit.png?v=2" },
   { no: "03", id: "purple", name: "보라 캐릭터", src: "assets/character_purple.png", selectable: false },
   { no: "04", id: "panda", name: "닌자 판다", src: "assets/character_panda.png", selectable: false },
   { no: "05", id: "cotton", name: "솜사탕 곰", src: "assets/character_cotton.png", selectable: false },
