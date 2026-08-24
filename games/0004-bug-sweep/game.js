@@ -739,17 +739,17 @@ function drawBug(b) {
 // 대왕 벌레 머리 위에 남은 에너지를 점으로 표시합니다.
 function drawBossHpPips(b) {
   ctx.save();
-  const gap = 11;
-  const startX = b.x - ((b.maxHp - 1) * gap) / 2;
-  const y = b.y - b.size / 2 - 12;
+  const segW = 14, segH = 6, gap = 1.5;
+  const totalW = b.maxHp * segW + (b.maxHp - 1) * gap;
+  const startX = b.x - totalW / 2;
+  const y = b.y - b.size / 2 - 14;
   for (let i = 0; i < b.maxHp; i++) {
-    ctx.beginPath();
-    ctx.arc(startX + i * gap, y, 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = i < b.hp ? "#ff5252" : "rgba(255,255,255,0.25)";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    const x = startX + i * (segW + gap);
+    ctx.fillStyle = i < b.hp ? "#ff3b3b" : "rgba(255,255,255,0.25)";
+    ctx.fillRect(x, y, segW, segH);
+    ctx.strokeStyle = "rgba(0,0,0,0.6)";
     ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.strokeRect(x, y, segW, segH);
   }
   ctx.restore();
 }
