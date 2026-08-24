@@ -30,7 +30,7 @@ const GAMES = [
     title: "벌레 소탕",
     desc: "벌레를 미사일로 소탕하라!",
     path: "games/0004-bug-sweep/index.html",
-    thumb: "games/0004-bug-sweep/assets/thumb.png?v=2",
+    thumb: "games/0004-bug-sweep/assets/thumb.png?v=3",
     ready: true,
   },
   {
@@ -188,7 +188,12 @@ document.body.addEventListener("touchend", (e) => {
     pullIndicator.classList.remove("ready");
     pullIndicatorText.textContent = "새로고침 중...";
     pullIndicator.style.transform = `translateY(${PULL_MAX}px)`;
-    setTimeout(() => location.reload(), 300);
+    // location.reload()만으로는 브라우저가 캐시된 페이지를 그대로 다시
+    // 보여줄 수 있어(특히 인앱 브라우저), 매번 다른 쿼리스트링을 붙여
+    // "새 주소"로 이동시켜서 확실히 서버에서 새로 받아오게 합니다.
+    setTimeout(() => {
+      location.href = location.pathname + "?_r=" + Date.now();
+    }, 300);
   } else {
     pullIndicator.classList.remove("ready");
     pullIndicator.style.transform = "translateY(0px)";
