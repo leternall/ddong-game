@@ -199,7 +199,7 @@ resize();
 
 // ---------- 게임 상태 초기화 ----------
 function spawnBug() {
-  const size = 24 + Math.random() * 10;
+  const size = 17 + Math.random() * 7;
   const emoji = BUG_TYPES[Math.floor(Math.random() * BUG_TYPES.length)];
   bugs.push({
     x: Math.random() * width,
@@ -238,7 +238,6 @@ function spawnBossBug() {
     lampOffsetY: (Math.random() - 0.5) * 100,
   });
   bossActive = true;
-  showLevelUpToast(`${type.name} 출현!`);
 }
 
 function spawnSprayDrop(x, y) {
@@ -577,8 +576,6 @@ function updateSprayDrops(dt) {
       if (sprayCount < SPRAY_MAX) {
         sprayCount++;
         showLevelUpToast("스프레이 획득!");
-      } else {
-        showLevelUpToast("스프레이 이미 최대!");
       }
       updateHud();
       continue;
@@ -649,11 +646,14 @@ function update(dt) {
     }
   }
 
-  // 벌레 자연 증가
+  // 벌레 자연 증가. 100마리를 잡을 때마다 한 번에 리스폰되는 수가 1마리씩
+  // 늘어나서 갈수록 벅차집니다(0~99마리 잡음: 1마리씩, 100~199마리: 2마리씩,
+  // 200~299마리: 3마리씩, 이런 식으로 계속 늘어남).
   bugSpawnTimer += dt;
   if (bugSpawnTimer >= BUG_SPAWN_INTERVAL_FRAMES) {
     bugSpawnTimer = 0;
-    spawnBug();
+    const spawnCount = Math.floor(killCount / 100) + 1;
+    for (let i = 0; i < spawnCount; i++) spawnBug();
     updateHud();
   }
 
