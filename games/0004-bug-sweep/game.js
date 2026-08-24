@@ -372,6 +372,13 @@ window.addEventListener("keyup", (e) => {
 });
 
 // ---------- 업데이트 ----------
+// 미사일은 항상 캐릭터 x좌표에서 수직으로 올라가므로, 벌레가 그 세로줄
+// 근처에 있으면 최대한 벗어나려고 하게 만듭니다. 이게 없으면 캐릭터를
+// 가만히 둬도 그 줄 위로 지나가는 벌레가 알아서 다 맞아 죽어버려서
+// 움직이지 않고도 게임이 되는 문제가 있었습니다.
+const MISSILE_LANE_AVOID_RADIUS = 55;
+const MISSILE_LANE_AVOID_PUSH = 2.2;
+
 function updateBugs(dt) {
   const margin = 20;
   const bugAreaBottom = playHeight * 0.8;
@@ -380,6 +387,15 @@ function updateBugs(dt) {
     // 바꿔야 미사일을 요리조리 피하는 느낌이 살아서, 가속도를 키웠습니다.
     b.vx += (Math.random() - 0.5) * 1.1 * dt;
     b.vy += (Math.random() - 0.5) * 1.1 * dt;
+
+    // 캐릭터의 사격 라인(정수리 위 세로줄) 회피
+    const dxFromPlayer = b.x - player.x;
+    if (Math.abs(dxFromPlayer) < MISSILE_LANE_AVOID_RADIUS) {
+      const dir = dxFromPlayer === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(dxFromPlayer);
+      const strength = 1 - Math.abs(dxFromPlayer) / MISSILE_LANE_AVOID_RADIUS;
+      b.vx += dir * strength * MISSILE_LANE_AVOID_PUSH * dt;
+    }
+
     b.vx = Math.max(-b.maxSpeed, Math.min(b.maxSpeed, b.vx));
     b.vy = Math.max(-b.maxSpeed, Math.min(b.maxSpeed, b.vy));
     b.x += b.vx * dt;
