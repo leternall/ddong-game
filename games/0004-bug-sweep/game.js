@@ -725,12 +725,43 @@ function drawMissile(m) {
   ctx.restore();
 }
 
+// 메뚜기 이모지(🦗)는 실제로는 "귀뚜라미"라 기기/폰트에 따라 초록이 아니라
+// 갈색으로 나오는 경우가 많습니다(색은 canvas fillStyle로 못 바꾸는 컬러
+// 이모지라서). 오프스크린 캔버스에 한 번 그려서 초록색을 덧씌운 뒤 그
+// 결과 이미지를 재사용해, 기기와 상관없이 항상 초록 메뚜기로 보이게
+// 합니다.
+let tintedCricketCanvas = null;
+function getTintedCricketCanvas() {
+  if (tintedCricketCanvas) return tintedCricketCanvas;
+  const pad = BOSS_SIZE * 0.3;
+  const s = Math.ceil(BOSS_SIZE + pad * 2);
+  const off = document.createElement("canvas");
+  off.width = s;
+  off.height = s;
+  const octx = off.getContext("2d");
+  octx.font = `${BOSS_SIZE}px sans-serif`;
+  octx.textAlign = "center";
+  octx.textBaseline = "middle";
+  octx.fillText("🦗", s / 2, s / 2);
+  octx.globalCompositeOperation = "source-atop";
+  octx.globalAlpha = 0.55;
+  octx.fillStyle = "#3fae4a";
+  octx.fillRect(0, 0, s, s);
+  tintedCricketCanvas = off;
+  return off;
+}
+
 function drawBug(b) {
   ctx.save();
-  ctx.font = `${b.size}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(b.emoji, b.x, b.y);
+  if (b.isBoss && b.emoji === "🦗") {
+    const img = getTintedCricketCanvas();
+    ctx.drawImage(img, b.x - img.width / 2, b.y - img.height / 2);
+  } else {
+    ctx.font = `${b.size}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(b.emoji, b.x, b.y);
+  }
   ctx.restore();
 
   if (b.isBoss) drawBossHpPips(b);
