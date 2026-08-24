@@ -202,10 +202,11 @@ resize();
 function spawnBug() {
   const size = 17 + Math.random() * 7;
   const emoji = BUG_TYPES[Math.floor(Math.random() * BUG_TYPES.length)];
+  // 처음엔 가로등이 있는 위쪽 절반에서 나타납니다.
+  const x = Math.random() * width;
+  const y = Math.random() * (playHeight * 0.5);
   bugs.push({
-    x: Math.random() * width,
-    // 처음엔 가로등이 있는 위쪽 절반에서 나타납니다.
-    y: Math.random() * (playHeight * 0.5),
+    x, y,
     vx: (Math.random() - 0.5) * 2,
     vy: (Math.random() - 0.5) * 2,
     maxSpeed: 2.6 + Math.random() * 2,
@@ -217,15 +218,21 @@ function spawnBug() {
     // 삼게 합니다.
     lampOffsetX: (Math.random() - 0.5) * 160,
     lampOffsetY: (Math.random() - 0.5) * 100,
+    // 몰이 탈출 판정용(제자리 감지)
+    anchorX: x,
+    anchorY: y,
+    stuckTime: 0,
+    lured: false,
   });
 }
 
 function spawnBossBug() {
   if (bossActive) return;
   const type = BOSS_TYPES[Math.floor(Math.random() * BOSS_TYPES.length)];
+  const x = Math.random() * (width - 80) + 40;
+  const y = Math.random() * (playHeight * 0.4) + 40;
   bugs.push({
-    x: Math.random() * (width - 80) + 40,
-    y: Math.random() * (playHeight * 0.4) + 40,
+    x, y,
     vx: (Math.random() - 0.5) * 1.5,
     vy: (Math.random() - 0.5) * 1.5,
     // 덩치가 커서 일반 벌레보다는 조금 느리게 움직입니다.
@@ -237,6 +244,10 @@ function spawnBossBug() {
     maxHp: BOSS_HP,
     lampOffsetX: (Math.random() - 0.5) * 160,
     lampOffsetY: (Math.random() - 0.5) * 100,
+    anchorX: x,
+    anchorY: y,
+    stuckTime: 0,
+    lured: false,
   });
   bossActive = true;
 }
@@ -467,6 +478,15 @@ const CORNER_ESCAPE_PUSH = 2.6;
 // 모여드는 느낌만 냅니다.
 const LIGHT_ATTRACT_FORCE = 0.3;
 
+// 벽 구석 탈출/사격 라인 회피만으로는 못 빠져나오는 자리(캐릭터 몸통 뒤 등)에
+// 갇혀 계속 같은 위치에 머무르는 "몰이"를 막기 위한 장치입니다. 일정 시간
+// 거의 움직이지 못한 벌레는 다른 모든 회피 로직을 무시하고 불빛으로 강하게
+// 끌려가도록 만들어서, 어디에 갇혀 있든 결국 트인 곳으로 빠져나오게 합니다.
+const STUCK_MOVE_THRESHOLD = 24; // 이 거리(px)보다 적게 움직이면 "제자리"로 봄
+const STUCK_TIME_LIMIT = 180; // 60fps 기준 약 3초
+const LURE_PULL_FORCE = 1.8; // 사격 라인 회피(2.2)·구석 탈출(2.6)을 아예 끄고 적용해서 이 정도면 충분히 지배적
+const LURE_ARRIVE_RADIUS = 30; // 불빛 근처에 도착하면 몰이 탈출 상태를 풀어줌
+
 // drawAlleyBackground()가 그리는 전구 위치와 반드시 같아야 합니다.
 function lampPosition() {
   return { x: width / 2, y: playHeight * 0.12 + 16 };
@@ -482,19 +502,49 @@ function updateBugs(dt) {
   const bugAreaBottom = playHeight * 0.8;
   const lamp = lampPosition();
   bugs.forEach((b, i) => {
-    // 랜덤워크로 "웽웽" 날아다니는 느낌을 냅니다. 방향을 더 자주 크게
-    // 바꿔야 미사일을 요리조리 피하는 느낌이 살아서, 가속도를 키웠습니다.
-    b.vx += (Math.random() - 0.5) * 1.1 * dt;
-    b.vy += (Math.random() - 0.5) * 1.1 * dt;
+    // 몰이 감지: 갇혀서 일정 시간 거의 제자리인 벌레는 불빛으로 강제로
+    // 끌어당깁니다(불빛에 거의 다다르면 해제하고 평소 행동으로 복귀).
+    if (!b.lured) {
+      const movedFromAnchor = Math.hypot(b.x - b.anchorX, b.y - b.anchorY);
+      if (movedFromAnchor > STUCK_MOVE_THRESHOLD) {
+        b.anchorX = b.x;
+        b.anchorY = b.y;
+        b.stuckTime = 0;
+      } else {
+        b.stuckTime += dt;
+        if (b.stuckTime >= STUCK_TIME_LIMIT) b.lured = true;
+      }
+    }
 
-    // 불빛을 향한 은근한 끌림(벌레마다 살짝 다른 지점을 향함)
-    const targetX = lamp.x + (b.lampOffsetX || 0);
-    const targetY = lamp.y + (b.lampOffsetY || 0);
-    const dxLamp = targetX - b.x;
-    const dyLamp = targetY - b.y;
-    const distLamp = Math.hypot(dxLamp, dyLamp) || 1;
-    b.vx += (dxLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
-    b.vy += (dyLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
+    if (b.lured) {
+      const targetX = lamp.x + (b.lampOffsetX || 0) * 0.3;
+      const targetY = lamp.y + (b.lampOffsetY || 0) * 0.3;
+      const dxLamp = targetX - b.x;
+      const dyLamp = targetY - b.y;
+      const distLamp = Math.hypot(dxLamp, dyLamp) || 1;
+      b.vx += (dxLamp / distLamp) * LURE_PULL_FORCE * dt;
+      b.vy += (dyLamp / distLamp) * LURE_PULL_FORCE * dt;
+      if (distLamp < LURE_ARRIVE_RADIUS) {
+        b.lured = false;
+        b.anchorX = b.x;
+        b.anchorY = b.y;
+        b.stuckTime = 0;
+      }
+    } else {
+      // 랜덤워크로 "웽웽" 날아다니는 느낌을 냅니다. 방향을 더 자주 크게
+      // 바꿔야 미사일을 요리조리 피하는 느낌이 살아서, 가속도를 키웠습니다.
+      b.vx += (Math.random() - 0.5) * 1.1 * dt;
+      b.vy += (Math.random() - 0.5) * 1.1 * dt;
+
+      // 불빛을 향한 은근한 끌림(벌레마다 살짝 다른 지점을 향함)
+      const targetX = lamp.x + (b.lampOffsetX || 0);
+      const targetY = lamp.y + (b.lampOffsetY || 0);
+      const dxLamp = targetX - b.x;
+      const dyLamp = targetY - b.y;
+      const distLamp = Math.hypot(dxLamp, dyLamp) || 1;
+      b.vx += (dxLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
+      b.vy += (dyLamp / distLamp) * LIGHT_ATTRACT_FORCE * dt;
+    }
 
     // 다른 벌레와 겹치도록 뭉치면 서로 밀어냅니다.
     for (let j = 0; j < bugs.length; j++) {
@@ -510,20 +560,24 @@ function updateBugs(dt) {
       }
     }
 
-    // 벽 구석에 몰렸으면 사격 라인 회피보다 벽 탈출이 우선입니다.
-    const nearLeftWall = b.x < margin + CORNER_ESCAPE_ZONE;
-    const nearRightWall = b.x > width - margin - CORNER_ESCAPE_ZONE;
-    if (nearLeftWall || nearRightWall) {
-      const escapeDir = nearLeftWall ? 1 : -1;
-      b.vx += escapeDir * CORNER_ESCAPE_PUSH * dt;
-    } else {
-      // 캐릭터의 사격 라인(정수리 위 세로줄) 회피 — 불빛 끌림보다 훨씬
-      // 강해서 사격 라인 안에서는 이쪽이 이깁니다.
-      const dxFromPlayer = b.x - player.x;
-      if (Math.abs(dxFromPlayer) < MISSILE_LANE_AVOID_RADIUS) {
-        const dir = dxFromPlayer === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(dxFromPlayer);
-        const strength = 1 - Math.abs(dxFromPlayer) / MISSILE_LANE_AVOID_RADIUS;
-        b.vx += dir * strength * MISSILE_LANE_AVOID_PUSH * dt;
+    // 몰이로 불빛에 끌려가는 중에는 구석 탈출/사격 라인 회피를 모두
+    // 무시합니다(이 회피들이 서로 부딪혀 제자리에 갇히는 원인이었으므로).
+    if (!b.lured) {
+      // 벽 구석에 몰렸으면 사격 라인 회피보다 벽 탈출이 우선입니다.
+      const nearLeftWall = b.x < margin + CORNER_ESCAPE_ZONE;
+      const nearRightWall = b.x > width - margin - CORNER_ESCAPE_ZONE;
+      if (nearLeftWall || nearRightWall) {
+        const escapeDir = nearLeftWall ? 1 : -1;
+        b.vx += escapeDir * CORNER_ESCAPE_PUSH * dt;
+      } else {
+        // 캐릭터의 사격 라인(정수리 위 세로줄) 회피 — 불빛 끌림보다 훨씬
+        // 강해서 사격 라인 안에서는 이쪽이 이깁니다.
+        const dxFromPlayer = b.x - player.x;
+        if (Math.abs(dxFromPlayer) < MISSILE_LANE_AVOID_RADIUS) {
+          const dir = dxFromPlayer === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(dxFromPlayer);
+          const strength = 1 - Math.abs(dxFromPlayer) / MISSILE_LANE_AVOID_RADIUS;
+          b.vx += dir * strength * MISSILE_LANE_AVOID_PUSH * dt;
+        }
       }
     }
 
