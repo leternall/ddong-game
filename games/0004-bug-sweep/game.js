@@ -167,7 +167,7 @@ const PLAYER_SPEED = 8;
 const PAUSE_ZONE_MARGIN = 30;
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 
-const MISSILE_SPEED = 12;
+const MISSILE_SPEED = 20; // 벌레가 2마리씩 리스폰되는 구간부터 못 따라간다는 피드백으로 상향(12→20)
 const MISSILE_INTERVAL_FRAMES = 24; // 60fps 기준 약 0.4초마다 자동 발사
 const MISSILE_RADIUS = 6.5; // 기존 5px의 1.3배 — 1.5배는 너무 쉬워서 하향
 const MISSILE_HIT_RADIUS = 15.6; // 기존 12px의 1.3배
