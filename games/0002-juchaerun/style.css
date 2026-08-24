@@ -28,7 +28,9 @@ body {
 }
 
 #gameCanvas {
-  background: linear-gradient(to bottom, #87ceeb, #e0f7fa);
+  /* 숲속 오솔길 느낌: 위쪽은 초록빛이 도는 나무 그늘, 아래로 갈수록
+     햇살 드는 풀밭 톤으로 밝아집니다. */
+  background: linear-gradient(to bottom, #6fae82 0%, #cfe8a0 45%, #8fbc5a 100%);
   display: block;
   touch-action: none;
 }

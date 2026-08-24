@@ -496,6 +496,57 @@ function drawEntity(e) {
   ctx.fillText(ENTITY_EMOJI[e.type], e.x, e.y);
 }
 
+// ---------- 배경 꾸미기 (숲속 오솔길 느낌) ----------
+// 화면 폭/높이에 대한 비율(xf/yf)로 저장해두면 리사이즈되어도 다시 계산할
+// 필요 없이 항상 같은 자리에 흩어져 보입니다.
+const BG_LEAF_COUNT = 16;
+const bgLeaves = Array.from({ length: BG_LEAF_COUNT }, () => ({
+  xf: Math.random(),
+  yf: Math.random(),
+  scale: 0.6 + Math.random() * 0.7,
+  rot: Math.random() * Math.PI * 2,
+  tuft: Math.random() < 0.5,
+}));
+
+function drawForestBackground() {
+  ctx.save();
+
+  // 위쪽 한 켠에서 은은하게 비쳐드는 햇살
+  const glow = ctx.createRadialGradient(
+    width * 0.78, height * 0.06, 0,
+    width * 0.78, height * 0.06, width * 0.65
+  );
+  glow.addColorStop(0, "rgba(255,250,210,0.35)");
+  glow.addColorStop(1, "rgba(255,250,210,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, playHeight);
+
+  // 바닥에 흩어진 나뭇잎/풀숲
+  bgLeaves.forEach((leaf) => {
+    ctx.save();
+    ctx.translate(leaf.xf * width, leaf.yf * playHeight);
+    ctx.rotate(leaf.rot);
+    ctx.scale(leaf.scale, leaf.scale);
+    if (leaf.tuft) {
+      ctx.fillStyle = "rgba(90,140,60,0.35)";
+      ctx.beginPath();
+      ctx.moveTo(-7, 7);
+      ctx.lineTo(0, -9);
+      ctx.lineTo(7, 7);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "rgba(190,150,60,0.3)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 9, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+
+  ctx.restore();
+}
+
 function drawLaneGuides() {
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.25)";
@@ -513,6 +564,7 @@ function drawLaneGuides() {
 
 function draw() {
   ctx.clearRect(0, 0, width, height);
+  drawForestBackground();
   drawLaneGuides();
   entities.forEach(drawEntity);
   drawPlayer();
