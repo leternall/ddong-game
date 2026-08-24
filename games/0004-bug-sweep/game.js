@@ -223,6 +223,8 @@ function spawnBug() {
     anchorY: y,
     stuckTime: 0,
     lured: false,
+    escapingWall: false,
+    escapeDir: 0,
   });
 }
 
@@ -248,6 +250,8 @@ function spawnBossBug() {
     anchorY: y,
     stuckTime: 0,
     lured: false,
+    escapingWall: false,
+    escapeDir: 0,
   });
   bossActive = true;
 }
@@ -473,6 +477,13 @@ const MISSILE_LANE_AVOID_PUSH = 2.2;
 // 수도 있지만, 안전하게 갇혀 farming 당하는 것보다는 낫습니다).
 const CORNER_ESCAPE_ZONE = 50; // 벽에서 이 거리 안이면 "구석"
 const CORNER_ESCAPE_PUSH = 2.6;
+// 벽 탈출 경계(margin+CORNER_ESCAPE_ZONE)와 사격 라인 회피 경계가 딱 맞닿아
+// 있으면, 캐릭터가 그 경계 바로 앞에 서 있을 때 "벽에서 밀려나옴 → 사격
+// 라인 회피에 걸려 다시 안으로 밀림"이 계속 반복되며 그 경계선에 벌레가
+// 일렬로 갇혀버립니다. 한 번 탈출을 시작하면 경계를 확실히 더 벗어날
+// 때까지(이 여유만큼 더) 사격 라인 회피를 계속 무시하게 해서 이 핑퐁을
+// 없앱니다.
+const CORNER_ESCAPE_CLEAR_BUFFER = 45;
 // 불빛(가로등 전구)을 향해 은근히 끌리는 불나방 본능. 사격 라인 회피보다
 // 훨씬 약하게 줘서, 캐릭터를 피하는 게 항상 우선이고 그 외엔 불빛 쪽으로
 // 모여드는 느낌만 냅니다.
@@ -569,12 +580,25 @@ function updateBugs(dt) {
     // 몰이로 불빛에 끌려가는 중에는 구석 탈출/사격 라인 회피를 모두
     // 무시합니다(이 회피들이 서로 부딪혀 제자리에 갇히는 원인이었으므로).
     if (!b.lured) {
-      // 벽 구석에 몰렸으면 사격 라인 회피보다 벽 탈출이 우선입니다.
+      // 벽 구석 탈출은 한 번 시작하면(경계 안쪽에 들어서면) 경계를 확실히
+      // 벗어날 때까지(+CORNER_ESCAPE_CLEAR_BUFFER) 계속 이어갑니다. 매
+      // 프레임 위치만 보고 즉석에서 켜고 끄면, 캐릭터가 경계 바로 앞에 서
+      // 있을 때 "탈출 → 사격 라인 회피에 걸려 다시 안으로 → 탈출 → ..."가
+      // 반복되며 그 경계선에 벌레가 일렬로 갇혀버립니다.
       const nearLeftWall = b.x < margin + CORNER_ESCAPE_ZONE;
       const nearRightWall = b.x > width - margin - CORNER_ESCAPE_ZONE;
       if (nearLeftWall || nearRightWall) {
-        const escapeDir = nearLeftWall ? 1 : -1;
-        b.vx += escapeDir * CORNER_ESCAPE_PUSH * dt;
+        b.escapingWall = true;
+        b.escapeDir = nearLeftWall ? 1 : -1;
+      }
+      if (b.escapingWall) {
+        b.vx += b.escapeDir * CORNER_ESCAPE_PUSH * dt;
+        const clearZone = margin + CORNER_ESCAPE_ZONE + CORNER_ESCAPE_CLEAR_BUFFER;
+        const stillNearLeft = b.x < clearZone;
+        const stillNearRight = b.x > width - clearZone;
+        if (!stillNearLeft && !stillNearRight) {
+          b.escapingWall = false;
+        }
       } else {
         // 캐릭터의 사격 라인(정수리 위 세로줄) 회피 — 불빛 끌림보다 훨씬
         // 강해서 사격 라인 안에서는 이쪽이 이깁니다.
