@@ -202,6 +202,22 @@ body {
   transform: scale(0.96);
 }
 
+#nameSkipBtn {
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255,255,255,0.75);
+  cursor: pointer;
+}
+
+#nameSkipBtn:active {
+  transform: scale(0.96);
+}
+
 #nameSavedMsg {
   font-size: 14px;
   color: #ffcc00;

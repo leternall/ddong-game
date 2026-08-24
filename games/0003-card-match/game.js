@@ -25,13 +25,18 @@ const rankMessageEl = document.getElementById("rankMessage");
 const nameEntryEl = document.getElementById("nameEntry");
 const nameInputEl = document.getElementById("nameInput");
 const nameSubmitBtn = document.getElementById("nameSubmitBtn");
+const nameSkipBtn = document.getElementById("nameSkipBtn");
 const nameSavedMsgEl = document.getElementById("nameSavedMsg");
 const rankingListEl = document.getElementById("rankingList");
 const restartBtn = document.getElementById("restartBtn");
 
 const levelupToast = document.getElementById("levelup-toast");
 
-const RANKING_KEY = "gieokryeok-rankings";
+const GAME_ID = "0003";
+// 클리어 여부를 먼저 보고, 그다음은 점수로 정렬합니다. Firestore는 단일
+// 필드 정렬이 간단해서, 클리어 시 아주 큰 값을 더해 "클리어한 기록이 항상
+// 못 깬 기록보다 위"가 되는 rankScore 하나로 합칩니다.
+const CLEARED_BONUS = 1000000;
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 const MAX_MISTAKES_PER_LEVEL = 20;
 const MAX_LEVEL = 12;
@@ -431,101 +436,59 @@ pauseHomeBtn.addEventListener("click", () => {
   location.href = "../../index.html";
 });
 
-// ---------- 랭킹 ----------
-function loadRuns() {
-  try {
-    return JSON.parse(localStorage.getItem(RANKING_KEY)) || [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function compareRuns(a, b) {
-  if (a.cleared !== b.cleared) return a.cleared ? -1 : 1;
-  return b.score - a.score;
-}
-
-function saveRunAndGetRank(run) {
-  const runs = loadRuns();
-  runs.push(run);
-  runs.sort(compareRuns);
-  const rank = runs.findIndex((r) => r.ts === run.ts) + 1;
-  const trimmed = runs.slice(0, 50);
-  localStorage.setItem(RANKING_KEY, JSON.stringify(trimmed));
-  return { rank, runs: trimmed, ts: run.ts };
-}
-
-function formatRunLabel(r) {
-  return `${r.score}점`;
-}
-
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
-
-function nameOrAnon(r) {
-  return r.name ? escapeHtml(r.name) : "-";
-}
-
-function renderRanking(rankInfo) {
-  const { rank, runs, ts } = rankInfo;
-  rankMessageEl.textContent = `역대 ${rank}위!`;
-
-  rankingListEl.innerHTML = "";
-  const heading = document.createElement("h2");
-  heading.textContent = "🏆 랭킹 TOP 5";
-  rankingListEl.appendChild(heading);
-
-  const ol = document.createElement("ol");
-  const top = runs.slice(0, 5);
-  top.forEach((r, i) => {
-    const li = document.createElement("li");
-    if (r.ts === ts) li.classList.add("me");
-    li.innerHTML = `<span>${i + 1}위</span><span>${formatRunLabel(r)}</span><span>${nameOrAnon(r)}</span>`;
-    ol.appendChild(li);
-  });
-
-  if (rank > 5) {
-    const li = document.createElement("li");
-    li.classList.add("me");
-    li.innerHTML = `<span>${rank}위</span><span>${formatRunLabel(runs[rank - 1])} (내 기록)</span><span>${nameOrAnon(runs[rank - 1])}</span>`;
-    ol.appendChild(li);
-  }
-
-  rankingListEl.appendChild(ol);
-}
-
-// ---------- 게임오버 후 이름 등록(선택) ----------
-let currentEntryTs = null;
+// ---------- 랭킹(클라우드) ----------
+let currentRun = null; // { cleared, timeMs, score }
+let submittingScore = false;
 
 function resetNameEntry() {
   nameInputEl.value = "";
   nameEntryEl.classList.remove("hidden");
   nameSavedMsgEl.classList.add("hidden");
+  rankMessageEl.textContent = "";
+  rankingListEl.innerHTML = "";
 }
 
-function registerName() {
-  if (currentEntryTs == null) return;
-  const name = nameInputEl.value.trim().slice(0, 3);
-  const runs = loadRuns();
-  const idx = runs.findIndex((r) => r.ts === currentEntryTs);
-  if (idx >= 0) {
-    runs[idx].name = name;
-    localStorage.setItem(RANKING_KEY, JSON.stringify(runs));
-    const rank = runs.slice().sort(compareRuns).findIndex((r) => r.ts === currentEntryTs) + 1;
-    renderRanking({ rank, runs, ts: currentEntryTs });
-  }
+async function submitScore(name) {
+  if (submittingScore || currentRun == null) return;
+  submittingScore = true;
+  const rankScore = currentRun.score + (currentRun.cleared ? CLEARED_BONUS : 0);
+  const entry = {
+    score: currentRun.score,
+    cleared: currentRun.cleared,
+    timeMs: currentRun.timeMs,
+    name,
+    ts: Date.now(),
+    rankScore,
+  };
+
   nameEntryEl.classList.add("hidden");
-  nameSavedMsgEl.textContent = name ? `"${name}"(으)로 등록 완료!` : "이름 없이 저장했어요.";
   nameSavedMsgEl.classList.remove("hidden");
+  nameSavedMsgEl.textContent = "제출 중...";
+
+  const ok = await window.CloudRanking.submitEntry(GAME_ID, entry);
+  if (!ok) {
+    nameSavedMsgEl.textContent = "랭킹 서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.";
+    nameEntryEl.classList.remove("hidden");
+    submittingScore = false;
+    return;
+  }
+  nameSavedMsgEl.textContent = name ? `"${name}"(으)로 등록 완료!` : "이름 없이 저장했어요.";
+
+  const [top, rank] = await Promise.all([
+    window.CloudRanking.getTopEntries(GAME_ID, 5),
+    window.CloudRanking.getRank(GAME_ID, entry.rankScore),
+  ]);
+  window.CloudRanking.renderRanking(rankMessageEl, rankingListEl, { rank, top, entry });
+  submittingScore = false;
 }
 
-nameSubmitBtn.addEventListener("click", registerName);
-nameInputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") registerName();
+nameSubmitBtn.addEventListener("click", () => {
+  submitScore(nameInputEl.value.trim().slice(0, 3));
 });
+nameInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") submitScore(nameInputEl.value.trim().slice(0, 3));
+});
+nameSkipBtn.addEventListener("click", () => submitScore(""));
 
 // ---------- 시작/종료 ----------
 function startGame() {
@@ -568,16 +531,13 @@ function endGame(cleared, reason) {
     updateHud();
   }
 
-  const run = { cleared, timeMs: elapsedMs, score, ts: Date.now() };
-  const rankInfo = saveRunAndGetRank(run);
-  currentEntryTs = rankInfo.ts;
+  currentRun = { cleared, timeMs: elapsedMs, score };
   resetNameEntry();
 
   resultTitleEl.textContent = cleared ? "🎉 클리어! 🎉" : (reason === "timeout" ? "⏰ 시간 초과!" : "게임 오버!");
   resultDetailEl.textContent = cleared
     ? `클리어 시간: ${formatTime(elapsedMs)} (점수: ${score})`
     : `점수: ${score} (도달 레벨: ${level})`;
-  renderRanking(rankInfo);
 
   resultScreen.classList.remove("hidden");
 }

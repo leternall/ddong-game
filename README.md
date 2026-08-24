@@ -13,7 +13,7 @@
 
 허브 화면 오른쪽 위 🏆 아이콘을 누르면 게임별 랭킹을 볼 수 있습니다(허브와 동일하게 좌우로 넘기며 게임을 고르는 방식). 왼쪽 위 "← 허브로"로 돌아옵니다.
 
-모든 게임은 게임오버 화면에서 이름(선택, 최대 8자)을 등록할 수 있습니다. 비워둔 채 등록하면 랭킹에 "익명"으로 남습니다.
+모든 게임은 게임오버 화면에서 이름(선택, 최대 3자)을 등록하거나 건너뛸 수 있습니다. 등록/건너뛰기를 누른 순간 점수가 클라우드(Firebase)에 저장되어, 이 주소에 접속한 **모든 사람의 기록이 하나의 랭킹**으로 합쳐집니다. 자세한 구조는 아래 [클라우드 랭킹](#클라우드-랭킹-firebase) 참고.
 
 ## 0001. 💩 똥피하기
 
@@ -110,6 +110,17 @@ git push
 
 푸시하고 1~2분 뒤 위 주소에 자동으로 반영됩니다.
 
+## 클라우드 랭킹 (Firebase)
+
+랭킹은 기기별 localStorage가 아니라 **Firebase 프로젝트 `juchae-game-app`의 Cloud Firestore**에 저장됩니다. 이 주소에 접속한 모든 사람의 기록이 하나의 랭킹으로 합쳐집니다.
+
+- **데이터 구조**: `rankings/{gameId}/entries/{entryId}` — `gameId`는 `0001`~`0004` 같은 게임 번호. 문서 하나가 기록 한 개(`score`, `name`, `ts`, 정렬용 `rankScore`, 게임별 추가 필드).
+- **저장 시점**: 보안 규칙이 문서 생성만 허용하고 수정은 막아 놨기 때문에(점수 위조 방지), 게임오버 직후가 아니라 **이름 등록/건너뛰기를 누른 시점에 딱 한 번** 저장됩니다. 그전까지는 로컬에만 점수를 들고 있습니다.
+- **보안 규칙**: 누구나 읽기 가능, 생성만 가능(수정·삭제 불가), `score`(0~1억 미만 숫자)·`name`(10자 이하 문자열)·`ts`·`rankScore`(= score ~ score+1,000,000 범위)를 검증합니다. Firebase 콘솔 → Firestore Database → 규칙 탭에서 확인/수정합니다.
+- **공통 모듈**: 루트의 `cloud-ranking.js`가 Firebase SDK를 CDN에서 동적으로 불러와 `window.CloudRanking`에 `submitEntry`/`getTopEntries`/`getRank`/`renderRanking` 등을 붙여줍니다. 각 게임의 `index.html`은 `game.js`보다 먼저 `<script src="../../cloud-ranking.js?v=1">`을 불러오고, `game.js`는 게임오버 시 이 함수들을 호출합니다.
+- **SDK 설정값**(apiKey 등)은 `cloud-ranking.js` 안에 그대로 들어 있습니다 — 이 프로젝트는 정적 사이트라 서버 비밀키가 아니라 클라이언트 공개 설정값이라 노출돼도 괜찮습니다(실제 쓰기 제한은 위 보안 규칙이 담당).
+- **오프라인/네트워크 오류**: 서버에 연결할 수 없으면 안내 문구만 보여주고 게임 진행 자체는 막지 않습니다. APK 등 오프라인 환경 지원은 아직 없습니다.
+
 ## 파일 구성
 
 ```
@@ -119,7 +130,8 @@ juchae-game-app/
 ├── hub.js              허브 화면 로직 (게임 목록은 GAMES 배열)
 ├── rankings.html        랭킹 화면 구조
 ├── rankings.css         랭킹 화면 디자인
-├── rankings.js          랭킹 화면 로직 (게임 목록은 RANK_GAMES 배열)
+├── rankings.js          랭킹 화면 로직 (게임 목록은 RANK_GAMES 배열, 클라우드에서 읽어옴)
+├── cloud-ranking.js     클라우드 랭킹 공통 모듈 (Firebase Firestore 연동, 모든 게임 + 랭킹 화면이 공유)
 ├── robots.txt          검색엔진 색인 차단
 ├── 게임서버-시작.bat     휴대폰 접속용 서버 실행 (같은 Wi-Fi)
 └── games/
@@ -174,14 +186,12 @@ const GAMES = [
 
 허브 화면에 자동으로 나타납니다.
 
-3. 새 게임이 자체 랭킹(localStorage)을 쌓는다면, 루트 `rankings.js`의 `RANK_GAMES` 배열에도 한 항목을 추가해야 랭킹 화면에 나타납니다.
-   - `key`는 그 게임 `game.js`의 `RANKING_KEY`와 정확히 같아야 합니다.
-   - `format`은 점수만 저장하는 게임이면 `"score"`, 기억력 게임처럼 클리어 여부+시간까지 저장하는 게임이면 `"run"`입니다.
+3. 새 게임이 랭킹을 쌓는다면 `cloud-ranking.js`를 게임의 `game.js`보다 먼저 불러오고, 게임오버 화면에 이름 입력창 + 등록 버튼(`nameSubmitBtn`) + 건너뛰기 버튼(`nameSkipBtn`)을 둔 뒤 [클라우드 랭킹](#클라우드-랭킹-firebase) 절의 패턴을 그대로 따라 `GAME_ID`를 정하고 `window.CloudRanking`을 호출하면 됩니다. 루트 `rankings.js`의 `RANK_GAMES` 배열에도 `{ id, title }` 한 항목을 추가해야 랭킹 화면에 나타납니다.
 
 ```js
 const RANK_GAMES = [
   // ...기존 게임들
-  { id: "0005", title: "새 게임", key: "새게임-rankings", format: "score" },
+  { id: "0005", title: "새 게임" },
 ];
 ```
 

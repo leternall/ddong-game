@@ -1,13 +1,13 @@
 // ===== 게임별 랭킹 보기 =====
-// 각 게임의 localStorage 랭킹 키를 그대로 읽어옵니다(같은 origin이라
-// 게임 폴더가 달라도 전부 공유됩니다). 정렬/표시 방식은 각 게임의
-// saveRunAndGetRank / compareRuns 로직과 동일하게 맞춥니다.
+// 각 게임이 클라우드(Firestore)에 저장한 랭킹을 읽어옵니다. 정렬은 저장할 때
+// 이미 계산해 둔 rankScore 기준(cloud-ranking.js 참고)이라 여기서는 그대로
+// 상위 N개를 받아 보여주기만 하면 됩니다.
 
 const RANK_GAMES = [
-  { id: "0001", title: "똥피하기", key: "ddongpihagi-rankings", format: "score" },
-  { id: "0002", title: "쭈채Run", key: "juchaerun-lanes-rankings", format: "score" },
-  { id: "0003", title: "기억력 게임", key: "gieokryeok-rankings", format: "run" },
-  { id: "0004", title: "벌레 소탕", key: "bugsweep-rankings", format: "score" },
+  { id: "0001", title: "똥피하기" },
+  { id: "0002", title: "쭈채Run" },
+  { id: "0003", title: "기억력 게임" },
+  { id: "0004", title: "벌레 소탕" },
 ];
 
 const TOP_N = 10;
@@ -28,42 +28,7 @@ RANK_GAMES.forEach(() => {
 const dotEls = Array.from(dotsEl.children);
 
 let index = 0;
-
-function loadEntries(key) {
-  try {
-    return JSON.parse(localStorage.getItem(key)) || [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function sortScoreEntries(entries) {
-  return entries.slice().sort((a, b) => b.score - a.score || a.ts - b.ts);
-}
-
-// 기억력 게임(0003)은 클리어 여부를 먼저 보고, 그다음은 점수로 정렬합니다
-// (게임 안쪽 compareRuns와 동일 — 클리어 시 남은 시간만큼 점수 보너스가
-// 이미 더해져 있어 점수만으로도 속도가 반영됩니다).
-function sortRunEntries(entries) {
-  return entries.slice().sort((a, b) => {
-    if (a.cleared !== b.cleared) return a.cleared ? -1 : 1;
-    return b.score - a.score;
-  });
-}
-
-function formatTime(ms) {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function formatLabel(entry, format) {
-  if (format === "run") {
-    return `${entry.score}점`;
-  }
-  return `${entry.score}점`;
-}
+let requestToken = 0; // 화면을 빨리 넘길 때 늦게 도착한 응답이 최신 화면을 덮어쓰지 않도록 합니다.
 
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, (c) => ({
@@ -75,28 +40,35 @@ function nameOrAnon(entry) {
   return entry.name ? escapeHtml(entry.name) : "-";
 }
 
-function render() {
+async function render() {
   const game = RANK_GAMES[index];
+  const myToken = ++requestToken;
+
   slideNumberEl.textContent = game.id;
   slideTitleEl.textContent = game.title;
-
-  const raw = loadEntries(game.key);
-  const sorted = game.format === "run" ? sortRunEntries(raw) : sortScoreEntries(raw);
-  const top = sorted.slice(0, TOP_N);
-
   rankListEl.innerHTML = "";
+  rankEmptyEl.classList.add("hidden");
+  dotEls.forEach((d, i) => d.classList.toggle("active", i === index));
+
+  const top = await window.CloudRanking.getTopEntries(game.id, TOP_N);
+  if (myToken !== requestToken) return; // 그새 다른 게임으로 넘어감
+
+  if (top == null) {
+    rankEmptyEl.textContent = "랭킹 서버에 연결할 수 없어요";
+    rankEmptyEl.classList.remove("hidden");
+    return;
+  }
+
   if (top.length === 0) {
+    rankEmptyEl.textContent = "아직 기록이 없어요";
     rankEmptyEl.classList.remove("hidden");
   } else {
-    rankEmptyEl.classList.add("hidden");
     top.forEach((entry, i) => {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${i + 1}위</span><span>${formatLabel(entry, game.format)}</span><span>${nameOrAnon(entry)}</span>`;
+      li.innerHTML = `<span>${i + 1}위</span><span>${entry.score}점</span><span>${nameOrAnon(entry)}</span>`;
       rankListEl.appendChild(li);
     });
   }
-
-  dotEls.forEach((d, i) => d.classList.toggle("active", i === index));
 }
 
 // 허브와 동일하게 끝에서 끝으로도 막힘없이 순환합니다.

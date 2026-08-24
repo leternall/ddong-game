@@ -23,13 +23,14 @@ const rankMessageEl = document.getElementById("rankMessage");
 const nameEntryEl = document.getElementById("nameEntry");
 const nameInputEl = document.getElementById("nameInput");
 const nameSubmitBtn = document.getElementById("nameSubmitBtn");
+const nameSkipBtn = document.getElementById("nameSkipBtn");
 const nameSavedMsgEl = document.getElementById("nameSavedMsg");
 const rankingListEl = document.getElementById("rankingList");
 const restartBtn = document.getElementById("restartBtn");
 
 const levelupToast = document.getElementById("levelup-toast");
 
-const RANKING_KEY = "ddongpihagi-rankings";
+const GAME_ID = "0001";
 
 // ---------- 캐릭터 목록 ----------
 // no: 캐릭터 번호(01~08). 새 캐릭터를 추가할 때는 09부터 이어서 붙입니다.
@@ -595,96 +596,53 @@ function loop(timestamp) {
   }
 }
 
-// ---------- 랭킹 ----------
-function loadRankings() {
-  try {
-    return JSON.parse(localStorage.getItem(RANKING_KEY)) || [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveScoreAndGetRank(finalScore) {
-  const rankings = loadRankings();
-  const entry = { score: finalScore, ts: Date.now() };
-  rankings.push(entry);
-  rankings.sort((a, b) => b.score - a.score || a.ts - b.ts);
-  const rank = rankings.findIndex((r) => r.ts === entry.ts) + 1;
-  const trimmed = rankings.slice(0, 50);
-  localStorage.setItem(RANKING_KEY, JSON.stringify(trimmed));
-  return { rank, rankings: trimmed, entryTs: entry.ts };
-}
-
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
-
-function nameOrAnon(r) {
-  return r.name ? escapeHtml(r.name) : "-";
-}
-
-function renderRanking(rankInfo) {
-  const { rank, rankings, entryTs } = rankInfo;
-  rankMessageEl.textContent = `역대 ${rank}위!`;
-
-  rankingListEl.innerHTML = "";
-  const heading = document.createElement("h2");
-  heading.textContent = "🏆 랭킹 TOP 5";
-  rankingListEl.appendChild(heading);
-
-  const ol = document.createElement("ol");
-  const top = rankings.slice(0, 5);
-  top.forEach((r, i) => {
-    const li = document.createElement("li");
-    if (r.ts === entryTs) li.classList.add("me");
-    li.innerHTML = `<span>${i + 1}위</span><span>${r.score}점</span><span>${nameOrAnon(r)}</span>`;
-    ol.appendChild(li);
-  });
-
-  if (rank > 5) {
-    const li = document.createElement("li");
-    li.classList.add("me");
-    li.innerHTML = `<span>${rank}위</span><span>${rankings[rank - 1].score}점 (내 기록)</span><span>${nameOrAnon(rankings[rank - 1])}</span>`;
-    ol.appendChild(li);
-  }
-
-  rankingListEl.appendChild(ol);
-}
-
-// ---------- 게임오버 후 이름 등록(선택) ----------
-let currentEntryTs = null;
+// ---------- 랭킹(클라우드) ----------
+// 보안 규칙상 기록은 생성만 가능해서(수정 불가), 게임오버 시 바로 저장하지
+// 않고 이름 등록/건너뛰기를 누른 시점에 딱 한 번만 Firestore에 저장합니다.
+let currentEntryScore = null;
+let submittingScore = false;
 
 function resetNameEntry() {
   nameInputEl.value = "";
   nameEntryEl.classList.remove("hidden");
   nameSavedMsgEl.classList.add("hidden");
+  rankMessageEl.textContent = "";
+  rankingListEl.innerHTML = "";
 }
 
-function registerName() {
-  if (currentEntryTs == null) return;
-  const name = nameInputEl.value.trim().slice(0, 3);
-  const rankings = loadRankings();
-  const idx = rankings.findIndex((r) => r.ts === currentEntryTs);
-  if (idx >= 0) {
-    rankings[idx].name = name;
-    localStorage.setItem(RANKING_KEY, JSON.stringify(rankings));
-    const rank = rankings
-      .slice()
-      .sort((a, b) => b.score - a.score || a.ts - b.ts)
-      .findIndex((r) => r.ts === currentEntryTs) + 1;
-    renderRanking({ rank, rankings, entryTs: currentEntryTs });
-  }
+async function submitScore(name) {
+  if (submittingScore || currentEntryScore == null) return;
+  submittingScore = true;
+  const entry = { score: currentEntryScore, name, ts: Date.now(), rankScore: currentEntryScore };
+
   nameEntryEl.classList.add("hidden");
-  nameSavedMsgEl.textContent = name ? `"${name}"(으)로 등록 완료!` : "이름 없이 저장했어요.";
   nameSavedMsgEl.classList.remove("hidden");
+  nameSavedMsgEl.textContent = "제출 중...";
+
+  const ok = await window.CloudRanking.submitEntry(GAME_ID, entry);
+  if (!ok) {
+    nameSavedMsgEl.textContent = "랭킹 서버에 연결할 수 없어요. 잠시 후 다시 시도해주세요.";
+    nameEntryEl.classList.remove("hidden");
+    submittingScore = false;
+    return;
+  }
+  nameSavedMsgEl.textContent = name ? `"${name}"(으)로 등록 완료!` : "이름 없이 저장했어요.";
+
+  const [top, rank] = await Promise.all([
+    window.CloudRanking.getTopEntries(GAME_ID, 5),
+    window.CloudRanking.getRank(GAME_ID, entry.rankScore),
+  ]);
+  window.CloudRanking.renderRanking(rankMessageEl, rankingListEl, { rank, top, entry });
+  submittingScore = false;
 }
 
-nameSubmitBtn.addEventListener("click", registerName);
-nameInputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") registerName();
+nameSubmitBtn.addEventListener("click", () => {
+  submitScore(nameInputEl.value.trim().slice(0, 3));
 });
+nameInputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") submitScore(nameInputEl.value.trim().slice(0, 3));
+});
+nameSkipBtn.addEventListener("click", () => submitScore(""));
 
 // ---------- 시작/종료 ----------
 function startGame() {
@@ -707,10 +665,8 @@ function endGame() {
   gameoverHitImg.src = selectedCharacter.hitSrc || selectedCharacter.src;
   gameoverHitImg.classList.remove("hidden");
   finalScoreEl.textContent = `점수: ${score} (도달 레벨: ${level})`;
-  const rankInfo = saveScoreAndGetRank(score);
-  currentEntryTs = rankInfo.entryTs;
+  currentEntryScore = score;
   resetNameEntry();
-  renderRanking(rankInfo);
   gameoverScreen.classList.remove("hidden");
 }
 
