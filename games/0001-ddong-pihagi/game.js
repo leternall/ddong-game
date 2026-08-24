@@ -292,48 +292,36 @@ function togglePause() {
 }
 
 // ---------- 뒤로가기 = 일시정지 ----------
-// 게임 중 실수로 브라우저/기기 뒤로가기를 누르면 허브로 튕겨나가는 대신
-// 일시정지로 취급합니다. 일시정지 중에 뒤로가기를 한 번 더 누르면 계속하기와
-// 같습니다. history에 가짜 항목을 미리 심어두고, 그게 팝될 때(=뒤로가기)마다
-// 다시 심어서 붙잡아두는 방식입니다.
+// 게임 중 실수로 뒤로가기를 누르면 곧장 허브로 나가는 대신 첫 번째는
+// 일시정지로 막아줍니다. 이어하기는 화면의 "계속" 버튼으로 하고, 일시정지
+// 상태에서 뒤로가기를 또 누르면 정상적으로 허브로 나갑니다.
 //
-// 중요: 크롬/삼성인터넷 등은 "뒤로가기를 못 나가게 막는 사이트"를 감지하면
-// (popstate와 같은 태스크 안에서 스크립트가 새 history 항목을 추가하는 패턴)
-// 그다음 뒤로가기부터는 우리가 쌓아둔 항목을 전부 건너뛰고 진짜 이전 페이지로
-// 보내버리는 방지 기능이 있습니다. 그래서 재예치(push)를 popstate 핸들러
-// 안에서 곧바로 하지 않고, setTimeout으로 한 틱 늦춰 "뒤로가기 처리와 같은
-// 태스크가 아니게" 만들어 이 감지를 피합니다.
-let trapDepth = 0;
+// 뒤로가기를 계속 반복해서 막으려는 시도(history에 항목을 반복해서
+// 다시 심는 것)는 크롬/삼성인터넷 등에서 "못 나가게 막는 사이트"로 보고
+// 이후로는 우리가 심어둔 항목을 통째로 무시해버리기 때문에(실제로 확인된
+// 동작), 한 번만 막고 더는 다시 심지 않습니다.
+let trapArmed = false;
 
-function pushTrapEntry() {
-  history.pushState({ ddongBackTrap: true }, "", location.href);
-  trapDepth += 1;
-}
-
-// 게임을 시작할 때(뒤로가기로 인한 것이 아니라 캐릭터 선택으로 진입할 때)는
-// 감지 대상이 아니라서, 아주 빠른 연타에 대비해 여유분 2개를 한 번에 심어도
-// 안전합니다.
 function armBackTrap() {
-  if (trapDepth > 0) return;
-  pushTrapEntry();
-  pushTrapEntry();
+  if (trapArmed) return;
+  history.pushState({ ddongBackTrap: true }, "", location.href);
+  trapArmed = true;
 }
 
+// 뒤로가기로 소모되지 않은 트랩 항목이 남아있으면(캐릭터 다시 선택 등
+// 버튼으로 게임을 끝낸 경우), 한 단계 되돌려 정리합니다 — 안 그러면
+// 다음 뒤로가기 한 번은 아무 반응 없이 소모되고 두 번째에야 허브로 나가는
+// 어색한 상황이 생깁니다.
 function clearBackTrap() {
-  if (trapDepth <= 0) return;
-  const depth = trapDepth;
-  trapDepth = 0;
-  history.go(-depth);
+  if (!trapArmed) return;
+  trapArmed = false;
+  history.back();
 }
 
 window.addEventListener("popstate", () => {
-  if (trapDepth > 0) trapDepth -= 1;
-  if (running) {
-    togglePause();
-    // 지연된 재예치가 도착하기 전에 사용자가 직접 나가기(다시 캐릭터
-    // 선택 등)를 눌러 clearBackTrap()이 이미 정리했을 수 있어, 그때는
-    // 다시 심지 않습니다.
-    setTimeout(() => { if (running) pushTrapEntry(); }, 50);
+  if (trapArmed) {
+    trapArmed = false;
+    if (running) togglePause();
   }
 });
 

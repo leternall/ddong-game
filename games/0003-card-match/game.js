@@ -382,6 +382,36 @@ function togglePause() {
   }
 }
 
+// ---------- 뒤로가기 = 일시정지 (0001·0002와 동일한 방식) ----------
+// 게임 중 실수로 뒤로가기를 누르면 곧장 허브로 나가는 대신 첫 번째는
+// 일시정지로 막아줍니다. 이어하기는 화면의 "계속" 버튼으로 하고, 일시정지
+// 상태에서 뒤로가기를 또 누르면 정상적으로 허브로 나갑니다.
+//
+// 뒤로가기를 계속 반복해서 막으려는 시도(history에 항목을 반복해서
+// 다시 심는 것)는 크롬/삼성인터넷 등에서 "못 나가게 막는 사이트"로 보고
+// 이후로는 우리가 심어둔 항목을 통째로 무시해버리기 때문에(실제로 확인된
+// 동작), 한 번만 막고 더는 다시 심지 않습니다.
+let trapArmed = false;
+
+function armBackTrap() {
+  if (trapArmed) return;
+  history.pushState({ ddongBackTrap: true }, "", location.href);
+  trapArmed = true;
+}
+
+function clearBackTrap() {
+  if (!trapArmed) return;
+  trapArmed = false;
+  history.back();
+}
+
+window.addEventListener("popstate", () => {
+  if (trapArmed) {
+    trapArmed = false;
+    if (running) togglePause();
+  }
+});
+
 pauseBtn.addEventListener("click", togglePause);
 pauseContinueBtn.addEventListener("click", togglePause);
 pauseRestartBtn.addEventListener("click", () => {
@@ -466,10 +496,12 @@ function startGame() {
   timerEl.textContent = formatTime(0);
   startTimerInterval();
   startLevel();
+  armBackTrap();
 }
 
 function endGame(cleared) {
   running = false;
+  clearBackTrap();
   clearInterval(timerInterval);
   if (segmentStart) {
     elapsedMs += Date.now() - segmentStart;
