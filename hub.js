@@ -14,7 +14,7 @@ const GAMES = [
     title: "쭈채Run",
     desc: "장애물 피해 끝까지 달려라!",
     path: "games/0002-juchaerun/index.html",
-    thumb: "games/0002-juchaerun/assets/thumb.png?v=6",
+    thumb: "games/0002-juchaerun/assets/thumb.png?v=7",
     ready: true,
   },
   {
@@ -23,6 +23,14 @@ const GAMES = [
     desc: "카드를 뒤집어 짝을 맞춰라!",
     path: "games/0003-card-match/index.html",
     thumb: "games/0003-card-match/assets/thumb.png?v=2",
+    ready: true,
+  },
+  {
+    id: "0004",
+    title: "벌레 소탕",
+    desc: "벌레를 미사일로 소탕하라!",
+    path: "games/0004-bug-sweep/index.html",
+    thumb: "games/0004-bug-sweep/assets/thumb.png?v=1",
     ready: true,
   },
   {
