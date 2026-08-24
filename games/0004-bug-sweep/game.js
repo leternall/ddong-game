@@ -93,7 +93,7 @@ let width, height;
 let playHeight;
 let controlHeight;
 
-let player, missiles, bugs, fallingBugs, score, killCount, sprayCount;
+let player, missiles, bugs, fallingBugs, popEffects, score, killCount, sprayCount;
 let bugSpawnTimer, missileTimer;
 let running, paused;
 let moving = { left: false, right: false };
@@ -158,7 +158,7 @@ const PAUSE_ZONE_MARGIN = 30;
 const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 
 const MISSILE_SPEED = 12;
-const MISSILE_INTERVAL_FRAMES = 18; // 60fps 기준 약 0.3초마다 자동 발사
+const MISSILE_INTERVAL_FRAMES = 42; // 60fps 기준 약 0.7초마다 자동 발사
 const MISSILE_HIT_RADIUS = 12;
 
 const BUG_START_COUNT = 10;
@@ -199,6 +199,7 @@ function resetGame() {
   missiles = [];
   bugs = [];
   fallingBugs = [];
+  popEffects = [];
   score = 0;
   killCount = 0;
   sprayCount = SPRAY_START;
@@ -399,6 +400,21 @@ function updateFallingBugs(dt) {
   }
 }
 
+// 미사일에 맞은 벌레는 떨어뜨리지 않고 이 자리에서 "뿅" 하고 짧게 터지는
+// 이펙트만 남기고 바로 사라집니다(떨어지는 연출은 스프레이 전용).
+const POP_EFFECT_FRAMES = 14;
+
+function spawnPopEffect(x, y, size) {
+  popEffects.push({ x, y, size, age: 0 });
+}
+
+function updatePopEffects(dt) {
+  for (let i = popEffects.length - 1; i >= 0; i--) {
+    popEffects[i].age += dt;
+    if (popEffects[i].age >= POP_EFFECT_FRAMES) popEffects.splice(i, 1);
+  }
+}
+
 function update(dt) {
   // 플레이어 좌우 이동
   const moveStep = PLAYER_SPEED * dt;
@@ -419,8 +435,9 @@ function update(dt) {
 
   updateBugs(dt);
   updateFallingBugs(dt);
+  updatePopEffects(dt);
 
-  // 미사일-벌레 충돌
+  // 미사일-벌레 충돌: 떨어뜨리지 않고 그 자리에서 바로 터뜨려 없앱니다.
   for (let i = missiles.length - 1; i >= 0; i--) {
     const m = missiles[i];
     let hitIndex = -1;
@@ -436,12 +453,7 @@ function update(dt) {
     }
     if (hitIndex >= 0) {
       const b = bugs[hitIndex];
-      fallingBugs.push({
-        x: b.x, y: b.y, size: b.size, emoji: b.emoji,
-        vy: 2 + Math.random() * 1.5,
-        rot: 0,
-        rotSpeed: (Math.random() - 0.5) * 0.25,
-      });
+      spawnPopEffect(b.x, b.y, b.size);
       bugs.splice(hitIndex, 1);
       missiles.splice(i, 1);
       score += 10;
@@ -594,11 +606,33 @@ function drawFallingBug(b) {
   ctx.restore();
 }
 
+function drawPopEffect(p) {
+  const t = p.age / POP_EFFECT_FRAMES; // 0(막 터짐) ~ 1(다 사라짐)
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, 1 - t);
+  ctx.strokeStyle = "#fff4c0";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, (p.size / 2) * (0.6 + t * 1.3), 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "#ffe066";
+  const sparkCount = 5;
+  for (let k = 0; k < sparkCount; k++) {
+    const ang = (k / sparkCount) * Math.PI * 2;
+    const dist = (p.size / 2) * (0.5 + t * 1.5);
+    ctx.beginPath();
+    ctx.arc(p.x + Math.cos(ang) * dist, p.y + Math.sin(ang) * dist, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function draw() {
   ctx.clearRect(0, 0, width, height);
   drawAlleyBackground();
   fallingBugs.forEach(drawFallingBug);
   bugs.forEach(drawBug);
+  popEffects.forEach(drawPopEffect);
   missiles.forEach(drawMissile);
   drawPlayer();
 }
