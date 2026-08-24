@@ -60,7 +60,31 @@ GAMES.forEach(() => {
 });
 const dotEls = Array.from(dotsEl.children);
 
-let index = 0;
+// 새로고침(당겨서 새로고침 포함)해도 보고 있던 슬라이드에 그대로 머물도록,
+// 마지막으로 본 위치를 sessionStorage에 기억해둡니다. 저장된 값이 없거나
+// 게임 목록이 바뀌어 범위를 벗어나면 0001(0번)부터 시작합니다.
+const HUB_INDEX_KEY = "hub-last-index";
+
+function loadSavedIndex() {
+  try {
+    const raw = sessionStorage.getItem(HUB_INDEX_KEY);
+    const n = raw == null ? NaN : parseInt(raw, 10);
+    if (Number.isInteger(n) && n >= 0 && n < GAMES.length) return n;
+  } catch (e) {
+    // 인앱 브라우저 등에서 sessionStorage가 막혀 있어도 그냥 0번부터 시작합니다.
+  }
+  return 0;
+}
+
+function saveIndex() {
+  try {
+    sessionStorage.setItem(HUB_INDEX_KEY, String(index));
+  } catch (e) {
+    // 저장 실패해도 게임 진행에는 지장 없으니 무시합니다.
+  }
+}
+
+let index = loadSavedIndex();
 
 function render() {
   const game = GAMES[index];
@@ -89,6 +113,7 @@ function render() {
 // 끝에서 끝으로도 막힘없이 순환합니다(0001 이전 → TBD, TBD 다음 → 0001).
 function goTo(i) {
   index = ((i % GAMES.length) + GAMES.length) % GAMES.length;
+  saveIndex();
   render();
 }
 
