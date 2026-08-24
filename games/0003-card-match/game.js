@@ -36,6 +36,7 @@ const PAUSE_BUTTON_UNLOCK_DELAY = 400;
 const MAX_MISTAKES_PER_LEVEL = 20;
 const MAX_LEVEL = 12;
 const BOARD_GAP = 6;
+const TIME_LIMIT_MS = 30 * 60 * 1000; // 30분 제한시간
 
 // ---------- 카드 풀 ----------
 // 01~08번: 똥피하기 캐릭터 이미지를 그대로 재사용합니다(에셋 중복 없이 상대경로로 참조).
@@ -115,7 +116,11 @@ function formatTime(ms) {
 function startTimerInterval() {
   clearInterval(timerInterval);
   timerInterval = setInterval(() => {
-    timerEl.textContent = formatTime(currentElapsed());
+    const elapsed = currentElapsed();
+    timerEl.textContent = formatTime(elapsed);
+    if (running && !paused && elapsed >= TIME_LIMIT_MS) {
+      endGame(false, "timeout");
+    }
   }, 250);
 }
 
@@ -436,7 +441,6 @@ function loadRuns() {
 
 function compareRuns(a, b) {
   if (a.cleared !== b.cleared) return a.cleared ? -1 : 1;
-  if (a.cleared) return a.timeMs - b.timeMs;
   return b.score - a.score;
 }
 
@@ -451,7 +455,7 @@ function saveRunAndGetRank(run) {
 }
 
 function formatRunLabel(r) {
-  return r.cleared ? `${formatTime(r.timeMs)} 클리어` : `${r.score}점`;
+  return r.cleared ? `${r.score}점(클리어)` : `${r.score}점`;
 }
 
 function escapeHtml(s) {
@@ -543,7 +547,7 @@ function startGame() {
   armBackTrap();
 }
 
-function endGame(cleared) {
+function endGame(cleared, reason) {
   running = false;
   clearBackTrap();
   clearInterval(timerInterval);
@@ -553,12 +557,22 @@ function endGame(cleared) {
   }
   hud.classList.add("hidden");
 
+  if (cleared) {
+    // 마지막 레벨을 깨면 30분 기준 남은 시간만큼 1초당 1점을 더합니다.
+    // 실수해도 감점이 없어서 클리어한 판은 원래 다 같은 점수가 되어버려
+    // 점수로 순위를 매기는 의미가 없었는데, 이 보너스로 빨리 깰수록
+    // 점수가 높아지게 됩니다.
+    const remainingSec = Math.max(0, Math.floor((TIME_LIMIT_MS - elapsedMs) / 1000));
+    score += remainingSec;
+    updateHud();
+  }
+
   const run = { cleared, timeMs: elapsedMs, score, ts: Date.now() };
   const rankInfo = saveRunAndGetRank(run);
   currentEntryTs = rankInfo.ts;
   resetNameEntry();
 
-  resultTitleEl.textContent = cleared ? "🎉 클리어! 🎉" : "게임 오버!";
+  resultTitleEl.textContent = cleared ? "🎉 클리어! 🎉" : (reason === "timeout" ? "⏰ 시간 초과!" : "게임 오버!");
   resultDetailEl.textContent = cleared
     ? `클리어 시간: ${formatTime(elapsedMs)} (점수: ${score})`
     : `점수: ${score} (도달 레벨: ${level})`;

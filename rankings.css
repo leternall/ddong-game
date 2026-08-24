@@ -128,8 +128,9 @@ body {
   grid-template-columns: 34px 1fr 48px;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  padding: 5px 4px;
+  font-size: 13px;
+  line-height: 1.2;
+  padding: 4px 4px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 

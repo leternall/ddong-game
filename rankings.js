@@ -41,12 +41,12 @@ function sortScoreEntries(entries) {
   return entries.slice().sort((a, b) => b.score - a.score || a.ts - b.ts);
 }
 
-// 기억력 게임(0003)은 클리어 여부 + 시간/점수로 정렬합니다(게임 안쪽
-// compareRuns와 동일).
+// 기억력 게임(0003)은 클리어 여부를 먼저 보고, 그다음은 점수로 정렬합니다
+// (게임 안쪽 compareRuns와 동일 — 클리어 시 남은 시간만큼 점수 보너스가
+// 이미 더해져 있어 점수만으로도 속도가 반영됩니다).
 function sortRunEntries(entries) {
   return entries.slice().sort((a, b) => {
     if (a.cleared !== b.cleared) return a.cleared ? -1 : 1;
-    if (a.cleared) return a.timeMs - b.timeMs;
     return b.score - a.score;
   });
 }
@@ -60,7 +60,7 @@ function formatTime(ms) {
 
 function formatLabel(entry, format) {
   if (format === "run") {
-    return entry.cleared ? `${formatTime(entry.timeMs)} 클리어` : `${entry.score}점`;
+    return entry.cleared ? `${entry.score}점(클리어)` : `${entry.score}점`;
   }
   return `${entry.score}점`;
 }
