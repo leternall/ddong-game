@@ -326,22 +326,23 @@ body {
   text-align: left;
 }
 
+/* 등수(~10위) · 점수(나머지 전부) · 이름(~3자) 순으로 칸을 확실히
+   나눠 고정폭으로 잡아둡니다 — 안 그러면 점수 자릿수가 늘어날 때마다
+   줄마다 칸이 밀려서 정렬이 흐트러집니다. */
 #rankingList li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 15px;
-  padding: 3px 0;
+  display: grid;
+  grid-template-columns: 34px 1fr 48px;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  padding: 4px 0;
 }
 
-#rankingList li span:nth-child(2) {
-  flex: 1 1 auto;
-  min-width: 0;
+#rankingList li span {
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: center;
-  opacity: 0.85;
 }
 
 #rankingList li.me {

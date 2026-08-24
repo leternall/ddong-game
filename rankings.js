@@ -72,7 +72,7 @@ function escapeHtml(s) {
 }
 
 function nameOrAnon(entry) {
-  return entry.name ? escapeHtml(entry.name) : "익명";
+  return entry.name ? escapeHtml(entry.name) : "-";
 }
 
 function render() {
@@ -91,7 +91,7 @@ function render() {
     rankEmptyEl.classList.add("hidden");
     top.forEach((entry, i) => {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${i + 1}위</span><span>${nameOrAnon(entry)}</span><span>${formatLabel(entry, game.format)}</span>`;
+      li.innerHTML = `<span>${i + 1}위</span><span>${formatLabel(entry, game.format)}</span><span>${nameOrAnon(entry)}</span>`;
       rankListEl.appendChild(li);
     });
   }

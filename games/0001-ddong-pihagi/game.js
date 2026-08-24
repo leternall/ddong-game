@@ -622,7 +622,7 @@ function escapeHtml(s) {
 }
 
 function nameOrAnon(r) {
-  return r.name ? escapeHtml(r.name) : "익명";
+  return r.name ? escapeHtml(r.name) : "-";
 }
 
 function renderRanking(rankInfo) {
@@ -639,14 +639,14 @@ function renderRanking(rankInfo) {
   top.forEach((r, i) => {
     const li = document.createElement("li");
     if (r.ts === entryTs) li.classList.add("me");
-    li.innerHTML = `<span>${i + 1}위</span><span>${nameOrAnon(r)}</span><span>${r.score}점</span>`;
+    li.innerHTML = `<span>${i + 1}위</span><span>${r.score}점</span><span>${nameOrAnon(r)}</span>`;
     ol.appendChild(li);
   });
 
   if (rank > 5) {
     const li = document.createElement("li");
     li.classList.add("me");
-    li.innerHTML = `<span>${rank}위</span><span>${nameOrAnon(rankings[rank - 1])}</span><span>${rankings[rank - 1].score}점 (내 기록)</span>`;
+    li.innerHTML = `<span>${rank}위</span><span>${rankings[rank - 1].score}점 (내 기록)</span><span>${nameOrAnon(rankings[rank - 1])}</span>`;
     ol.appendChild(li);
   }
 
@@ -664,7 +664,7 @@ function resetNameEntry() {
 
 function registerName() {
   if (currentEntryTs == null) return;
-  const name = nameInputEl.value.trim().slice(0, 8);
+  const name = nameInputEl.value.trim().slice(0, 3);
   const rankings = loadRankings();
   const idx = rankings.findIndex((r) => r.ts === currentEntryTs);
   if (idx >= 0) {
