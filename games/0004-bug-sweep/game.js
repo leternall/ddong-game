@@ -482,7 +482,10 @@ const LIGHT_ATTRACT_FORCE = 0.3;
 // 갇혀 계속 같은 위치에 머무르는 "몰이"를 막기 위한 장치입니다. 일정 시간
 // 거의 움직이지 못한 벌레는 다른 모든 회피 로직을 무시하고 불빛으로 강하게
 // 끌려가도록 만들어서, 어디에 갇혀 있든 결국 트인 곳으로 빠져나오게 합니다.
-const STUCK_MOVE_THRESHOLD = 24; // 이 거리(px)보다 적게 움직이면 "제자리"로 봄
+// 24px는 너무 좁아서, 불빛 근처처럼 여러 마리가 각자 조금씩 흔들리며
+// 뭉쳐 있는 자리(그 자체로 좁게 맴도는 "몰이")를 못 잡아냈습니다. 그 정도
+// 흔들림은 그대로 "제자리"로 쳐지도록 범위를 넓힘.
+const STUCK_MOVE_THRESHOLD = 55; // 이 거리(px)보다 적게 움직이면 "제자리"로 봄
 const STUCK_TIME_LIMIT = 180; // 60fps 기준 약 3초
 const LURE_PULL_FORCE = 1.8; // 사격 라인 회피(2.2)·구석 탈출(2.6)을 아예 끄고 적용해서 이 정도면 충분히 지배적
 const LURE_ARRIVE_RADIUS = 30; // 불빛 근처에 도착하면 몰이 탈출 상태를 풀어줌
@@ -517,8 +520,11 @@ function updateBugs(dt) {
     }
 
     if (b.lured) {
-      const targetX = lamp.x + (b.lampOffsetX || 0) * 0.3;
-      const targetY = lamp.y + (b.lampOffsetY || 0) * 0.3;
+      // 평소 은근한 끌림과 같은 폭(lampOffset)을 그대로 씁니다. 여기를
+      // 더 좁혀서 불빛 정중앙에 가깝게 당기면, 이미 불빛 주변에 빽빽하게
+      // 뭉쳐 있는 무리를 오히려 더 좁은 자리로 밀어 넣어 몰이를 악화시킵니다.
+      const targetX = lamp.x + (b.lampOffsetX || 0);
+      const targetY = lamp.y + (b.lampOffsetY || 0);
       const dxLamp = targetX - b.x;
       const dyLamp = targetY - b.y;
       const distLamp = Math.hypot(dxLamp, dyLamp) || 1;
