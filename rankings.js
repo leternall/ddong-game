@@ -27,7 +27,15 @@ RANK_GAMES.forEach(() => {
 });
 const dotEls = Array.from(dotsEl.children);
 
-let index = 0;
+// 허브에서 특정 게임을 보고 있다가 🏆를 눌러 들어오면 그 게임부터 보여줍니다
+// (rankings.html?game=0004). 없거나 알 수 없는 값이면 0001부터 시작합니다.
+function loadStartIndex() {
+  const gameId = new URLSearchParams(location.search).get("game");
+  const i = RANK_GAMES.findIndex((g) => g.id === gameId);
+  return i >= 0 ? i : 0;
+}
+
+let index = loadStartIndex();
 let requestToken = 0; // 화면을 빨리 넘길 때 늦게 도착한 응답이 최신 화면을 덮어쓰지 않도록 합니다.
 
 function escapeHtml(s) {

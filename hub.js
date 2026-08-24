@@ -42,6 +42,7 @@ const GAMES = [
   },
 ];
 
+const rankLinkEl = document.getElementById("rankLink");
 const slideEl = document.getElementById("slide");
 const slideNumberEl = document.getElementById("slideNumber");
 const thumbImgEl = document.getElementById("thumbImg");
@@ -108,6 +109,10 @@ function render() {
   startBtn.textContent = game.ready ? "시작하기" : "준비중";
 
   dotEls.forEach((d, i) => d.classList.toggle("active", i === index));
+
+  // 지금 보고 있는 게임의 랭킹으로 바로 들어가도록, 🏆 링크에 게임 번호를
+  // 실어둡니다(랭킹 화면이 없는 TBD를 보고 있을 땐 그냥 기본값으로 열립니다).
+  rankLinkEl.href = "rankings.html?game=" + game.id;
 }
 
 // 끝에서 끝으로도 막힘없이 순환합니다(0001 이전 → TBD, TBD 다음 → 0001).
